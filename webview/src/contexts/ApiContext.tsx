@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react';
 import { api, ClaudeCodeApi } from '../api';
 import { useBridgeContext } from './BridgeContext';
 
@@ -19,21 +19,39 @@ interface ApiProviderProps {
  */
 export function ApiProvider({ children }: ApiProviderProps) {
   const { send, subscribe, isConnected } = useBridgeContext();
+  const [isApiReady, setIsApiReady] = useState(false);
+  const initializedRef = useRef(false);
 
-  // Initialize API when bridge connection changes
-  useEffect(() => {
+  // Initialize API synchronously on first render when connected
+  // This ensures API is ready before children mount
+  if (isConnected && !initializedRef.current) {
     api.initialize(send, subscribe, isConnected);
-  }, [send, subscribe, isConnected]);
-
-  // Update connection status
-  useEffect(() => {
     api.setConnected(isConnected);
-  }, [isConnected]);
+    initializedRef.current = true;
+  }
+
+  // Handle subsequent connection state changes
+  useEffect(() => {
+    if (isConnected) {
+      api.initialize(send, subscribe, isConnected);
+      api.setConnected(isConnected);
+      setIsApiReady(true);
+    } else {
+      api.setConnected(false);
+      setIsApiReady(false);
+      initializedRef.current = false;
+    }
+  }, [send, subscribe, isConnected]);
 
   const value: ApiContextValue = {
     api,
     isConnected,
   };
+
+  // Don't render children until API is initialized
+  if (isConnected && !isApiReady && !initializedRef.current) {
+    return null;
+  }
 
   return (
     <ApiContext.Provider value={value}>
