@@ -7,6 +7,7 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.util.SystemInfo
 import com.intellij.ui.jcef.JBCefBrowser
 import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
@@ -104,10 +105,21 @@ class ClaudeCodePanel(
                 return false // Allow default handling
             }
         }, browser.cefBrowser)
+
+        // Register keyboard handler for macOS text navigation shortcuts
+        // (Cmd+Arrow for line start/end, Option+Arrow for word navigation)
+        if (SystemInfo.isMac) {
+            browser.jbCefClient.addKeyboardHandler(
+                WebViewKeyboardHandler(),
+                browser.cefBrowser
+            )
+        }
     }
 
     private fun injectBridge(frame: CefFrame) {
+        val workingDir = project.basePath?.replace("\\", "\\\\")?.replace("'", "\\'") ?: ""
         val js = """
+            window.workingDirectory = '$workingDir';
             window.kotlinBridge = {
                 send: function(message) {
                     ${jsQuery.inject("JSON.stringify(message)")}

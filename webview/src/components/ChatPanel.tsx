@@ -4,6 +4,7 @@ import { MessageBubble } from './MessageBubble';
 import { ChatInput } from './ChatInput';
 import { ToolCard } from './ToolCard';
 import { SessionHeader } from './SessionHeader';
+import { ProjectSelector } from './ProjectSelector';
 import { useSessionContext } from '../contexts/SessionContext';
 import { useChatContext } from '../contexts/ChatContext';
 
@@ -28,6 +29,8 @@ export function ChatPanel() {
     currentSessionId,
     sessions,
     sessionState,
+    workingDirectory,
+    setWorkingDirectory,
     resetToNewSession,
     createSessionWithMessage,
     switchSession,
@@ -63,6 +66,10 @@ export function ChatPanel() {
     clearMessages();
     resetToNewSession();
   }, [clearMessages, resetToNewSession]);
+
+  const handleSelectProject = useCallback((path: string) => {
+    setWorkingDirectory(path);
+  }, [setWorkingDirectory]);
 
   // Handle submit with automatic session creation on first message
   const handleSubmitWithSession = useCallback((e?: React.FormEvent) => {
@@ -102,7 +109,16 @@ export function ChatPanel() {
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto pb-16"
       >
-        {isEmpty ? (
+        {!workingDirectory ? (
+          // JetBrains에서는 kotlinBridge가 workingDirectory를 주입하므로 ProjectSelector 불필요
+          window.kotlinBridge ? (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-zinc-500 text-sm">워킹 디렉토리를 불러오는 중...</p>
+            </div>
+          ) : (
+            <ProjectSelector onSelectProject={handleSelectProject} />
+          )
+        ) : isEmpty ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-zinc-500 text-sm">메시지를 입력하세요</p>
           </div>
@@ -153,7 +169,7 @@ export function ChatPanel() {
           isStopped={isStopped}
           onStop={stop}
           onContinue={continueGeneration}
-          disabled={sessionState === 'error'}
+          disabled={sessionState === 'error' || !workingDirectory}
           sessionState={sessionState}
         />
       </div>

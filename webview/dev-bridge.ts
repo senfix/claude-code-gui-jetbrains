@@ -34,6 +34,13 @@ interface SessionEntry {
   gitBranch?: string;
 }
 
+interface ProjectEntry {
+  name: string;       // 폴더 이름 (프로젝트 이름)
+  path: string;       // 전체 경로 (워킹 디렉토리)
+  sessionCount: number;
+  lastModified: string;
+}
+
 interface SessionMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -48,12 +55,15 @@ async function getProjectSessionsPath(workingDir: string): Promise<string> {
 }
 
 async function getSessionsList(workingDir: string): Promise<SessionEntry[]> {
+  console.log('[dev-bridge] getSessionsList called with:', workingDir);
   try {
     const sessionsPath = await getProjectSessionsPath(workingDir);
     const indexPath = join(sessionsPath, 'sessions-index.json');
+    console.log('[dev-bridge] Reading index from:', indexPath);
 
     const indexContent = await readFile(indexPath, 'utf-8');
     const index = JSON.parse(indexContent);
+    console.log('[dev-bridge] Found entries count:', index.entries?.length);
 
     // Sort by modified date descending
     const sessions = (index.entries || [])
@@ -70,9 +80,71 @@ async function getSessionsList(workingDir: string): Promise<SessionEntry[]> {
         new Date(b.modified).getTime() - new Date(a.modified).getTime()
       );
 
+    console.log('[dev-bridge] Returning sessions count:', sessions.length);
     return sessions;
   } catch (error) {
     console.error('[dev-bridge] Error reading sessions index:', error);
+    return [];
+  }
+}
+
+async function getProjectsList(): Promise<ProjectEntry[]> {
+  try {
+    const projectsDir = join(homedir(), '.claude', 'projects');
+    const entries = await readdir(projectsDir, { withFileTypes: true });
+
+    const projects: ProjectEntry[] = [];
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('.')) continue; // hidden folders
+
+      // Try to read sessions-index.json to get project path and session count
+      let path: string | null = null;
+      let sessionCount = 0;
+      let lastModified = new Date().toISOString();
+
+      try {
+        const indexPath = join(projectsDir, entry.name, 'sessions-index.json');
+        const indexContent = await readFile(indexPath, 'utf-8');
+        const index = JSON.parse(indexContent);
+        const validEntries = (index.entries || []).filter((e: any) => !e.isSidechain);
+        sessionCount = validEntries.length;
+
+        // Get projectPath from first valid entry
+        if (validEntries.length > 0 && validEntries[0].projectPath) {
+          path = validEntries[0].projectPath;
+        }
+
+        // Get the most recent modified date
+        if (validEntries.length > 0) {
+          const dates = validEntries.map((e: any) => new Date(e.modified || e.created).getTime());
+          lastModified = new Date(Math.max(...dates)).toISOString();
+        }
+      } catch {
+        // No sessions-index.json or no valid entries, skip this project
+        continue;
+      }
+
+      // Skip if we couldn't determine the project path
+      if (!path) continue;
+
+      const name = path.split('/').pop() || path;
+
+      projects.push({
+        name,
+        path,
+        sessionCount,
+        lastModified,
+      });
+    }
+
+    // Sort by lastModified descending
+    projects.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
+
+    return projects;
+  } catch (error) {
+    console.error('[dev-bridge] Error reading projects list:', error);
     return [];
   }
 }
@@ -386,7 +458,14 @@ export function devBridgePlugin() {
               case 'GET_SESSIONS':
                 const sessionsWorkingDir = message.payload?.workingDir as string || process.cwd();
                 const sessions = await getSessionsList(sessionsWorkingDir);
-                sendToClient(ws, 'SESSIONS_LIST', { sessions });
+                // ACK에 sessions 포함 (send()가 ACK payload만 반환하므로)
+                sendToClient(ws, 'ACK', { requestId: message.requestId, sessions });
+                break;
+
+              case 'GET_PROJECTS':
+                const projects = await getProjectsList();
+                // PROJECTS_LIST를 먼저 보내고 (ProjectSelector가 subscribe로 기다림)
+                sendToClient(ws, 'PROJECTS_LIST', { projects });
                 sendToClient(ws, 'ACK', { requestId: message.requestId });
                 break;
 

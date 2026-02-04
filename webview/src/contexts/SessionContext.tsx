@@ -16,7 +16,7 @@ interface SessionContextValue {
   sessions: SessionMetaDto[];
   sessionState: SessionState;
   isLoading: boolean;
-  workingDirectory: string;
+  workingDirectory: string | null;
 
   // Actions
   loadSessions: () => Promise<void>;
@@ -27,7 +27,7 @@ interface SessionContextValue {
   renameSession: (sessionId: string, title: string) => void;
   setSessionState: (state: SessionState) => void;
   saveMessages: (messages: Message[]) => void;
-  setWorkingDirectory: (dir: string) => void;
+  setWorkingDirectory: (dir: string | null) => void;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -46,9 +46,12 @@ export function SessionProvider({ children, onSessionChange, onMessagesLoaded }:
   const [sessions, setSessions] = useState<SessionMetaDto[]>([]);
   const [sessionState, setSessionState] = useState<SessionState>('idle');
   const [isLoading, setIsLoading] = useState(false);
-  const [workingDirectory, setWorkingDirectoryState] = useState<string>(
-    window.workingDirectory || '/Users/yonghyun/Projects/yhk1038/claude-code-gui-jetbrains'
-  );
+  const [workingDirectory, setWorkingDirectoryState] = useState<string | null>(() => {
+    // 1순위: JetBrains가 주입한 값
+    // 2순위: URL 파라미터 (브라우저에서 직접 접근 시)
+    const params = new URLSearchParams(window.location.search);
+    return window.workingDirectory || params.get('workingDir') || null;
+  });
 
   const messagesRef = useRef<Message[]>([]);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -56,14 +59,47 @@ export function SessionProvider({ children, onSessionChange, onMessagesLoaded }:
   onMessagesLoadedRef.current = onMessagesLoaded;
 
   // Update API workingDir when it changes
-  const setWorkingDirectory = useCallback((dir: string) => {
+  const setWorkingDirectory = useCallback((dir: string | null) => {
     setWorkingDirectoryState(dir);
-    api.setWorkingDir(dir);
+    if (dir) {
+      api.setWorkingDir(dir);
+      // Update URL with workingDir parameter
+      const url = new URL(window.location.href);
+      url.searchParams.set('workingDir', dir);
+      window.history.replaceState({}, '', url.toString());
+    } else {
+      // Remove workingDir parameter if null
+      const url = new URL(window.location.href);
+      url.searchParams.delete('workingDir');
+      window.history.replaceState({}, '', url.toString());
+    }
   }, [api]);
 
   // Initialize API workingDir on mount
   React.useEffect(() => {
-    api.setWorkingDir(workingDirectory);
+    if (workingDirectory) {
+      api.setWorkingDir(workingDirectory);
+    }
+  }, [api, workingDirectory]);
+
+  // JetBrains에서 kotlinBridgeReady 이벤트 후 workingDirectory 주입 감지
+  React.useEffect(() => {
+    const handleBridgeReady = () => {
+      if (window.workingDirectory && !workingDirectory) {
+        setWorkingDirectoryState(window.workingDirectory);
+        api.setWorkingDir(window.workingDirectory);
+      }
+    };
+
+    window.addEventListener('kotlinBridgeReady', handleBridgeReady);
+
+    // 이미 kotlinBridge가 있고 workingDirectory가 주입된 경우
+    if (window.kotlinBridge && window.workingDirectory && !workingDirectory) {
+      setWorkingDirectoryState(window.workingDirectory);
+      api.setWorkingDir(window.workingDirectory);
+    }
+
+    return () => window.removeEventListener('kotlinBridgeReady', handleBridgeReady);
   }, [api, workingDirectory]);
 
   const generateSessionId = useCallback(() => {
@@ -74,6 +110,11 @@ export function SessionProvider({ children, onSessionChange, onMessagesLoaded }:
   const loadSessions = useCallback(async () => {
     if (!isConnected) {
       console.log('[SessionContext] Not connected, cannot load sessions');
+      return;
+    }
+
+    if (!workingDirectory) {
+      console.log('[SessionContext] No working directory set, cannot load sessions');
       return;
     }
 
