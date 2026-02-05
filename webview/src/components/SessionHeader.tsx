@@ -210,9 +210,9 @@ export function SessionHeader({
                       <div className="px-2 py-1.5 text-[11px] text-zinc-500">
                         {GROUP_LABELS[groupKey]}
                       </div>
-                      {sessionsInGroup.map((session) => (
+                      {sessionsInGroup.map((session, i) => (
                         <button
-                          key={session.id}
+                          key={i}
                           onClick={() => handleSelectSession(session.id)}
                           className={`w-full px-2 py-1.5 text-left text-xs rounded transition-colors flex justify-between items-center gap-2 ${
                             session.id === currentSessionId
