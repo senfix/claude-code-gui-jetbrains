@@ -15,6 +15,7 @@ export interface InputModeConfig {
   description: string;    // 툴팁 설명
   borderColor: string;    // Tailwind 테두리 색상 클래스
   textColor: string;      // 텍스트 색상 클래스
+  hoverBg: string;        // 호버 시 배경색
   sendButtonBg: string;   // 전송 버튼 배경색
 }
 
@@ -26,6 +27,7 @@ export const INPUT_MODES: Record<InputMode, InputModeConfig> = {
     description: 'Claude will explore the code and present a plan before editing. Click, or press Shift+Tab, to switch modes.',
     borderColor: 'border-zinc-700',
     textColor: 'text-zinc-400',
+    hoverBg: 'hover:bg-zinc-800',
     sendButtonBg: 'bg-zinc-600 hover:bg-zinc-500',
   },
   bypass: {
@@ -35,6 +37,7 @@ export const INPUT_MODES: Record<InputMode, InputModeConfig> = {
     description: 'Claude Code will not ask for your approval before running potentially dangerous commands.',
     borderColor: 'border-red-500/70',
     textColor: 'text-red-400',
+    hoverBg: 'hover:bg-red-950/80',
     sendButtonBg: 'bg-red-500 hover:bg-red-400',
   },
   ask_before_edit: {
@@ -44,6 +47,7 @@ export const INPUT_MODES: Record<InputMode, InputModeConfig> = {
     description: 'Claude will ask before each edit. Click, or press Shift+Tab, to switch modes.',
     borderColor: 'border-amber-500/70',
     textColor: 'text-amber-400',
+    hoverBg: 'hover:bg-amber-950/80',
     sendButtonBg: 'bg-amber-500 hover:bg-amber-400',
   },
   auto_edit: {
@@ -53,6 +57,7 @@ export const INPUT_MODES: Record<InputMode, InputModeConfig> = {
     description: 'Claude will edit your selected text or the whole file. Click, or press Shift+Tab, to switch modes.',
     borderColor: 'border-green-500/70',
     textColor: 'text-green-400',
+    hoverBg: 'hover:bg-green-950/80',
     sendButtonBg: 'bg-green-500 hover:bg-green-400',
   },
 };

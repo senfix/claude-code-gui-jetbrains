@@ -11,7 +11,7 @@ export function InputModeTag({ mode, onClick }: InputModeTagProps) {
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition-opacity hover:opacity-70 cursor-pointer"
+      className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs font-medium text-zinc-400 transition-colors cursor-pointer hover:bg-zinc-800"
       title={config.description}
       onClick={onClick}
     >
