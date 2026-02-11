@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect, KeyboardEvent, useState } from 'react';
+import { useCallback, useEffect, KeyboardEvent, useState } from 'react';
 import { AttachedContext } from '../../hooks/useContext';
 import { ContextChip } from '../ContextChip';
 import { SlashCommandPanel } from '../SlashCommandPanel';
@@ -74,8 +74,7 @@ export function ChatInput({
   onFileToggle,
   sessionId,
 }: ChatInputProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { registerRef, focus: focusInput } = useChatInputFocus();
+  const { textareaRef } = useChatInputFocus();
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [unsavedDraft, setUnsavedDraft] = useState<string>('');
@@ -133,11 +132,6 @@ export function ChatInput({
     ],
   });
 
-  // Register textarea ref with context
-  useEffect(() => {
-    registerRef(textareaRef.current);
-    return () => registerRef(null);
-  }, [registerRef]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -152,9 +146,12 @@ export function ChatInput({
   // Focus on session change or when input becomes enabled
   useEffect(() => {
     if (!disabled) {
-      focusInput();
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [sessionId, disabled, focusInput]);
+  }, [sessionId, disabled, textareaRef]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
     // Shift+Tab: 모드 전환
