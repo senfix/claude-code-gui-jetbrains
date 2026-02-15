@@ -2,6 +2,7 @@ package com.github.yhk1038.claudecodegui.toolwindow
 
 import com.github.yhk1038.claudecodegui.bridge.WebViewBridge
 import com.github.yhk1038.claudecodegui.services.ClaudeCliService
+import com.github.yhk1038.claudecodegui.settings.SettingsManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
@@ -57,10 +58,34 @@ class ClaudeCodePanel(
         isLenient = true
     }
 
+    // 로딩 화면용 레이블
+    private val loadingLabel = javax.swing.JLabel("Loading settings...").apply {
+        horizontalAlignment = javax.swing.SwingConstants.CENTER
+        font = font.deriveFont(14f)
+    }
+
+    // 에러 화면용 패널
+    private var errorPanel: JPanel? = null
+
     init {
-        setupBridge()
-        loadWebView()
-        add(browser.component, BorderLayout.CENTER)
+        // Phase 1: 로딩 화면 표시
+        add(loadingLabel, BorderLayout.CENTER)
+
+        // Phase 2: 설정 로딩 (동기)
+        // EDT 동기 실행 허용 - SettingsManager.ensureAndLoad() KDoc 참조
+        val settingsManager = SettingsManager.getInstance()
+        val loadSuccess = settingsManager.ensureAndLoad()
+
+        // Phase 3: 결과에 따라 분기
+        if (loadSuccess) {
+            remove(loadingLabel)
+            setupBridge()
+            loadWebView()
+            add(browser.component, BorderLayout.CENTER)
+        } else {
+            remove(loadingLabel)
+            showSettingsError()
+        }
     }
 
     private fun setupBridge() {
@@ -250,6 +275,59 @@ class ClaudeCodePanel(
         val url = "http://localhost:$builtInServerPort${WebViewRequestHandler.PREFIX}/index.html"
         logger.info("Loading WebView via custom HTTP handler: $url")
         browser.loadURL(url)
+    }
+
+    private fun showSettingsError() {
+        val settingsPath = "${System.getProperty("user.home")}/.claude-code-gui/settings.js"
+        logger.error("Failed to load settings from: $settingsPath")
+
+        errorPanel = JPanel(BorderLayout(0, 12)).apply {
+            border = javax.swing.BorderFactory.createEmptyBorder(40, 40, 40, 40)
+
+            // 에러 메시지
+            val messageLabel = javax.swing.JLabel(
+                "<html><div style='text-align:center;'>" +
+                "<b>설정 파일을 불러올 수 없습니다</b><br><br>" +
+                "경로: $settingsPath<br><br>" +
+                "파일이 올바른 JavaScript 형식인지 확인하세요.<br>" +
+                "파일을 삭제하면 다음 실행 시 기본값으로 재생성됩니다." +
+                "</div></html>"
+            ).apply {
+                horizontalAlignment = javax.swing.SwingConstants.CENTER
+            }
+            add(messageLabel, BorderLayout.CENTER)
+
+            // 새로고침 버튼
+            val refreshButton = javax.swing.JButton("새로고침").apply {
+                addActionListener {
+                    retryLoadSettings()
+                }
+            }
+            val buttonPanel = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.CENTER))
+            buttonPanel.add(refreshButton)
+            add(buttonPanel, BorderLayout.SOUTH)
+        }
+        add(errorPanel!!, BorderLayout.CENTER)
+        revalidate()
+        repaint()
+    }
+
+    private fun retryLoadSettings() {
+        val settingsManager = SettingsManager.getInstance()
+        val loadSuccess = settingsManager.ensureAndLoad()
+
+        if (loadSuccess) {
+            errorPanel?.let { remove(it) }
+            errorPanel = null
+            setupBridge()
+            loadWebView()
+            add(browser.component, BorderLayout.CENTER)
+            revalidate()
+            repaint()
+            logger.info("Settings loaded successfully on retry")
+        } else {
+            logger.error("Settings load retry failed")
+        }
     }
 
     private fun isViteDevServerRunning(): Boolean {
@@ -451,7 +529,9 @@ class ClaudeCodePanel(
 
     override fun dispose() {
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
-        webViewBridge.dispose()
+        if (::webViewBridge.isInitialized) {
+            webViewBridge.dispose()
+        }
         Disposer.dispose(cursorQuery)
         Disposer.dispose(jsQuery)
         Disposer.dispose(browser)

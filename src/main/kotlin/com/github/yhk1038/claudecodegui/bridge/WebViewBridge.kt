@@ -5,7 +5,7 @@ import com.github.yhk1038.claudecodegui.services.ClaudeCliService
 import com.github.yhk1038.claudecodegui.services.ClaudeSessionService
 import com.github.yhk1038.claudecodegui.services.DiffService
 import com.github.yhk1038.claudecodegui.services.SessionData
-import com.github.yhk1038.claudecodegui.settings.ClaudeCodeSettings
+import com.github.yhk1038.claudecodegui.settings.SettingsManager
 import com.github.yhk1038.claudecodegui.toolwindow.ClaudeCodePanel
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
@@ -575,19 +575,10 @@ class WebViewBridge(
      * Handle GET_SETTINGS - Return all settings to WebView
      */
     private fun handleGetSettings(): JsonObject {
-        val state = ClaudeCodeSettings.getInstance().state
+        val settings = SettingsManager.getInstance()
         return buildJsonObject {
             put("status", "ok")
-            putJsonObject("settings") {
-                put("cliPath", state.cliPath)
-                put("permissionMode", state.permissionMode)
-                put("autoApplyLowRisk", state.autoApplyLowRisk)
-                put("theme", state.theme)
-                put("fontSize", state.fontSize)
-                put("debugMode", state.debugMode)
-                put("logLevel", state.logLevel)
-                put("initialInputMode", state.initialInputMode)
-            }
+            put("settings", settings.getAll())
         }
     }
 
@@ -596,80 +587,80 @@ class WebViewBridge(
      */
     private fun handleSaveSettings(payload: JsonObject): JsonObject {
         val key = payload["key"]?.jsonPrimitive?.content
-            ?: return buildJsonObject {
-                put("status", "error")
-                put("error", "Missing key")
-            }
+            ?: return errorResponse("Missing key")
 
-        val state = ClaudeCodeSettings.getInstance().state
+        val settings = SettingsManager.getInstance()
+
         try {
-            when (key) {
-                "cliPath" -> state.cliPath = payload["value"]?.jsonPrimitive?.contentOrNull
+            val value: JsonElement = when (key) {
+                "cliPath" -> {
+                    payload["value"]?.jsonPrimitive?.let {
+                        if (it.contentOrNull == null) JsonNull else it
+                    } ?: JsonNull
+                }
                 "permissionMode" -> {
-                    val value = payload["value"]?.jsonPrimitive?.contentOrNull
+                    val v = payload["value"]?.jsonPrimitive?.contentOrNull
                         ?: return errorResponse("Missing value for permissionMode")
-                    if (value !in listOf("ALWAYS_ASK", "AUTO_APPROVE_SAFE", "AUTO_APPROVE_ALL")) {
-                        return errorResponse("Invalid permissionMode: $value")
+                    if (v !in listOf("ALWAYS_ASK", "AUTO_APPROVE_SAFE", "AUTO_APPROVE_ALL")) {
+                        return errorResponse("Invalid permissionMode: $v")
                     }
-                    state.permissionMode = value
+                    JsonPrimitive(v)
                 }
                 "autoApplyLowRisk" -> {
-                    val value = payload["value"]?.jsonPrimitive?.booleanOrNull
+                    val v = payload["value"]?.jsonPrimitive?.booleanOrNull
                         ?: return errorResponse("Missing or invalid value for autoApplyLowRisk")
-                    state.autoApplyLowRisk = value
+                    JsonPrimitive(v)
                 }
                 "theme" -> {
-                    val value = payload["value"]?.jsonPrimitive?.contentOrNull
+                    val v = payload["value"]?.jsonPrimitive?.contentOrNull
                         ?: return errorResponse("Missing value for theme")
-                    if (value !in listOf("system", "light", "dark")) {
-                        return errorResponse("Invalid theme: $value")
+                    if (v !in listOf("system", "light", "dark")) {
+                        return errorResponse("Invalid theme: $v")
                     }
-                    state.theme = value
+                    JsonPrimitive(v)
                 }
                 "fontSize" -> {
-                    val value = payload["value"]?.jsonPrimitive?.intOrNull
+                    val v = payload["value"]?.jsonPrimitive?.intOrNull
                         ?: return errorResponse("Missing or invalid value for fontSize")
-                    if (value !in 8..32) {
-                        return errorResponse("fontSize out of range (8-32): $value")
+                    if (v !in 8..32) {
+                        return errorResponse("fontSize out of range (8-32): $v")
                     }
-                    state.fontSize = value
+                    JsonPrimitive(v)
                 }
                 "debugMode" -> {
-                    val value = payload["value"]?.jsonPrimitive?.booleanOrNull
+                    val v = payload["value"]?.jsonPrimitive?.booleanOrNull
                         ?: return errorResponse("Missing or invalid value for debugMode")
-                    state.debugMode = value
+                    JsonPrimitive(v)
                 }
                 "logLevel" -> {
-                    val value = payload["value"]?.jsonPrimitive?.contentOrNull
+                    val v = payload["value"]?.jsonPrimitive?.contentOrNull
                         ?: return errorResponse("Missing value for logLevel")
-                    if (value !in listOf("debug", "info", "warn", "error")) {
-                        return errorResponse("Invalid logLevel: $value")
+                    if (v !in listOf("debug", "info", "warn", "error")) {
+                        return errorResponse("Invalid logLevel: $v")
                     }
-                    state.logLevel = value
+                    JsonPrimitive(v)
                 }
                 "initialInputMode" -> {
-                    val value = payload["value"]?.jsonPrimitive?.contentOrNull
+                    val v = payload["value"]?.jsonPrimitive?.contentOrNull
                         ?: return errorResponse("Missing value for initialInputMode")
-                    if (value !in listOf("plan", "bypass", "ask_before_edit", "auto_edit")) {
-                        return errorResponse("Invalid initialInputMode: $value")
+                    if (v !in listOf("plan", "bypass", "ask_before_edit", "auto_edit")) {
+                        return errorResponse("Invalid initialInputMode: $v")
                     }
-                    state.initialInputMode = value
+                    JsonPrimitive(v)
                 }
-                else -> return buildJsonObject {
-                    put("status", "error")
-                    put("error", "Unknown setting key: $key")
-                }
+                else -> return errorResponse("Unknown setting key: $key")
             }
-        } catch (e: Exception) {
-            return buildJsonObject {
-                put("status", "error")
-                put("error", "Invalid value for key $key: ${e.message}")
-            }
-        }
 
-        logger.info("Setting updated: $key")
-        return buildJsonObject {
-            put("status", "ok")
+            val success = settings.set(key, value)
+            if (!success) {
+                return errorResponse("Failed to save setting: $key")
+            }
+
+            logger.info("Setting updated: $key")
+            return buildJsonObject { put("status", "ok") }
+
+        } catch (e: Exception) {
+            return errorResponse("Invalid value for key $key: ${e.message}")
         }
     }
 

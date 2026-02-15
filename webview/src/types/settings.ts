@@ -1,7 +1,7 @@
 import type { InputMode } from './chatInput';
 
 /**
- * 설정 키 정의 - Kotlin ClaudeCodeSettings.State와 동기화
+ * 설정 키 정의 - Kotlin SettingsManager와 동기화 (settings.js 파일 기반)
  */
 export enum SettingKey {
   // CLI

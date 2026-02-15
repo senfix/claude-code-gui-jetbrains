@@ -47,9 +47,9 @@
             id="com.github.yhk1038.claudecodegui.settings"
             displayName="Claude Code"/>
 
-        <!-- Persistent state for settings -->
+        <!-- 파일 기반 설정 관리자 -->
         <applicationService
-            serviceImplementation="com.github.yhk1038.claudecodegui.settings.ClaudeCodeSettings"/>
+            serviceImplementation="com.github.yhk1038.claudecodegui.settings.SettingsManager"/>
 
         <!-- WebView resource server -->
         <httpRequestHandler

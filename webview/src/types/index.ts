@@ -11,7 +11,7 @@ export * from '../dto';
 // These will be gradually replaced by DTO classes
 // ============================================
 
-import type { AnyContentBlockDto } from '../dto';
+import type { AnyContentBlockDto } from '@/dto';
 
 /**
  * Message interface - supports both legacy string content and new ContentBlock array

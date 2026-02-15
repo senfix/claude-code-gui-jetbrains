@@ -42,8 +42,9 @@ interface ProjectEntry {
 }
 
 interface SessionMessage {
-  role: 'user' | 'assistant';
-  content: string;
+  type?: string;
+  role?: 'user' | 'assistant';
+  content: unknown;  // string or content block array - matches Kotlin behavior
   timestamp: string;
 }
 
@@ -167,28 +168,18 @@ async function loadSessionMessages(workingDir: string, targetSessionId: string):
 
         if (entry.type === 'user' && entry.message?.content) {
           messages.push({
+            type: 'user',
             role: 'user',
-            content: typeof entry.message.content === 'string'
-              ? entry.message.content
-              : JSON.stringify(entry.message.content),
+            content: entry.message.content,  // Pass as-is (array or string)
             timestamp: entry.timestamp,
           });
         } else if (entry.type === 'assistant' && entry.message?.content) {
-          // Assistant content is an array of blocks
-          const textContent = Array.isArray(entry.message.content)
-            ? entry.message.content
-                .filter((block: any) => block.type === 'text')
-                .map((block: any) => block.text)
-                .join('\n')
-            : entry.message.content;
-
-          if (textContent) {
-            messages.push({
-              role: 'assistant',
-              content: textContent,
-              timestamp: entry.timestamp,
-            });
-          }
+          messages.push({
+            type: 'assistant',
+            role: 'assistant',
+            content: entry.message.content,  // Pass as-is (array or string)
+            timestamp: entry.timestamp,
+          });
         }
       } catch {
         // Skip invalid JSON lines

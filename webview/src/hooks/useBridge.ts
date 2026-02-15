@@ -66,75 +66,52 @@ export function useBridge(): UseBridgeReturn {
     }
   };
 
-  // Connect to WebSocket (dev mode) or use Kotlin bridge (IDE mode)
+  // Connect: production uses Kotlin bridge, development uses WebSocket
   useEffect(() => {
-    // Setup Kotlin bridge handler
-    const setupKotlinBridge = () => {
-      console.log('[useBridge] Setting up Kotlin bridge');
-      setIsConnected(true);
-      // Expose handler for Kotlin to call
-      window.dispatchKotlinMessage = (msg: IPCMessage) => handleMessageRef.current?.(msg);
-    };
-
-    // Check if Kotlin bridge is already available (IDE mode)
-    if (window.kotlinBridge) {
-      console.log('[useBridge] Kotlin bridge already available');
-      setupKotlinBridge();
-      return () => {
-        window.dispatchKotlinMessage = undefined;
+    // === PRODUCTION: Kotlin bridge only ===
+    if (import.meta.env.PROD) {
+      const setupKotlinBridge = () => {
+        console.log('[useBridge] Setting up Kotlin bridge');
+        setIsConnected(true);
+        window.dispatchKotlinMessage = (msg: IPCMessage) => handleMessageRef.current?.(msg);
       };
-    }
 
-    // Listen for Kotlin bridge ready event (when injected after page load)
-    const handleBridgeReady = () => {
-      console.log('[useBridge] Received kotlinBridgeReady event');
+      // Already available
       if (window.kotlinBridge) {
         setupKotlinBridge();
-        // Clear WebSocket if it was started
-        if (wsRef.current) {
-          wsRef.current.close();
-          wsRef.current = null;
-        }
-        if (reconnectTimeoutRef.current) {
-          clearTimeout(reconnectTimeoutRef.current);
-          reconnectTimeoutRef.current = null;
-        }
-        isConnectingRef.current = false;
       }
-    };
 
-    window.addEventListener('kotlinBridgeReady', handleBridgeReady);
+      // Wait for injection after page load
+      const handleBridgeReady = () => {
+        console.log('[useBridge] Received kotlinBridgeReady event');
+        if (window.kotlinBridge) {
+          setupKotlinBridge();
+        }
+      };
+      window.addEventListener('kotlinBridgeReady', handleBridgeReady);
 
-    // Prevent multiple connections
-    if (isConnectingRef.current || wsRef.current) {
-      console.log('[useBridge] Already connecting or connected, skipping...');
       return () => {
         window.removeEventListener('kotlinBridgeReady', handleBridgeReady);
         window.dispatchKotlinMessage = undefined;
       };
     }
 
-    // Dev mode: connect to WebSocket
-    console.log('[useBridge] Kotlin bridge not available, connecting to WebSocket...');
+    // === DEVELOPMENT: WebSocket to Vite dev server ===
+    console.log('[useBridge] Dev mode: connecting to WebSocket...');
 
     const connect = () => {
-      if (isConnectingRef.current) {
-        console.log('[useBridge] Connection in progress, skipping...');
-        return;
-      }
-
+      if (isConnectingRef.current) return;
       isConnectingRef.current = true;
 
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws`;
-
       console.log('[useBridge] Connecting to:', wsUrl);
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('[useBridge] WebSocket connected, readyState:', ws.readyState);
+        console.log('[useBridge] WebSocket connected');
         isConnectingRef.current = false;
         setIsConnected(true);
         setLastError(null);
@@ -152,8 +129,8 @@ export function useBridge(): UseBridgeReturn {
       ws.onclose = () => {
         console.log('[useBridge] WebSocket disconnected');
         isConnectingRef.current = false;
-        setIsConnected(false);
         wsRef.current = null;
+        setIsConnected(false);
 
         // Reconnect after 2 seconds
         reconnectTimeoutRef.current = setTimeout(() => {
@@ -172,19 +149,18 @@ export function useBridge(): UseBridgeReturn {
     connect();
 
     return () => {
-      window.removeEventListener('kotlinBridgeReady', handleBridgeReady);
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
       if (wsRef.current) {
+        wsRef.current.onclose = null;
         wsRef.current.close();
         wsRef.current = null;
       }
       isConnectingRef.current = false;
       setIsConnected(false);
-      window.dispatchKotlinMessage = undefined;
     };
-  }, []); // Empty dependency - only run once on mount
+  }, []);
 
   // Wait for WebSocket to be ready
   const waitForConnection = useCallback((timeout = 5000): Promise<void> => {
@@ -220,8 +196,8 @@ export function useBridge(): UseBridgeReturn {
 
     console.log('[useBridge] Sending message:', type, payload);
 
-    // Wait for connection if not ready
-    if (wsRef.current?.readyState !== WebSocket.OPEN && !window.kotlinBridge?.send) {
+    // In dev mode, wait for WebSocket if not ready
+    if (import.meta.env.DEV && wsRef.current?.readyState !== WebSocket.OPEN) {
       console.log('[useBridge] Waiting for WebSocket connection...');
       try {
         await waitForConnection();
@@ -245,11 +221,9 @@ export function useBridge(): UseBridgeReturn {
       }, 30000);
 
       try {
-        // Try Kotlin bridge first
-        if (window.kotlinBridge?.send) {
+        if (import.meta.env.PROD && window.kotlinBridge?.send) {
           window.kotlinBridge.send(message);
-        } else if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-          // Use WebSocket in dev mode
+        } else if (import.meta.env.DEV && wsRef.current?.readyState === WebSocket.OPEN) {
           wsRef.current.send(JSON.stringify(message));
           console.log('[useBridge] Message sent via WebSocket');
         } else {

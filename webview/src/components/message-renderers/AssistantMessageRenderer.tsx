@@ -27,7 +27,7 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
     <div className="group py-2 px-4 pl-4">
       <div className="flex items-start gap-2">
         {/* Bullet indicator */}
-        <span className="text-zinc-500 mt-0.5 text-sm">●</span>
+        <span className="text-zinc-500 mt-[3px] text-[9px]">●</span>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
@@ -37,7 +37,7 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
             <StreamingMessage
               content={getTextContent(message)}
               isStreaming={message.isStreaming ?? false}
-              className="text-zinc-200 text-xs leading-relaxed"
+              className="text-zinc-200 text-[13px] leading-relaxed"
             />
           ) : (
             <span className="text-zinc-600 italic">Thinking...</span>

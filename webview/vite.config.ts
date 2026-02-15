@@ -6,9 +6,7 @@ import { devBridgePlugin } from './dev-bridge';
 export default defineConfig({
   plugins: [react(), devBridgePlugin()],
   base: './',
-  server: {
-    hmr: false
-  },
+  server: {},
   build: {
     outDir: '../src/main/resources/webview',
     emptyOutDir: true,

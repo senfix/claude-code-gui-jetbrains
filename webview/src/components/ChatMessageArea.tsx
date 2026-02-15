@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Message } from '../types';
+import { Message } from '@/types';
 import { MessageBubble } from './MessageBubble';
 import { ToolCard } from './ToolCard';
 import { ProjectSelector } from './ProjectSelector';
@@ -61,7 +61,7 @@ export function ChatMessageArea({
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto text-xs">
       {messages.map((message) => (
-        <div key={message.id}>
+        <div key={message.id} onClick={() => console.log('message', message.id, message)}>
           <MessageBubble message={message} onRetry={onRetry} />
 
           {/* Show tool cards for this message */}
