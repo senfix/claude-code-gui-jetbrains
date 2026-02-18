@@ -5,10 +5,13 @@ import { ContextPills } from './components/ContextPills';
 import { ImageAttachments } from './components/ImageAttachments';
 import { MessageActions } from './components/MessageActions';
 import { parseUserContent } from './utils/parseUserContent';
+import { InterruptedMessageRenderer } from './InterruptedMessageRenderer';
 
 interface UserMessageRendererProps {
   message: LoadedMessageDto;
 }
+
+const INTERRUPTED_TEXT = '[Request interrupted by user]';
 
 export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({ message }) => {
   const { copied, copy } = useCopyToClipboard();
@@ -22,6 +25,11 @@ export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({ messag
     ...(parsedContent.contexts || []),
     ...(message.context || []),
   ];
+
+  // Route interrupted messages to dedicated renderer
+  if (parsedContent.text.trim() === INTERRUPTED_TEXT) {
+    return <InterruptedMessageRenderer message={message} />;
+  }
 
   return (
     <div className="group py-2 px-4">
