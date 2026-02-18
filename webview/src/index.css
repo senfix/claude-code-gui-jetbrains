@@ -25,7 +25,8 @@
   --ide-warning: #fbbf24;
   --ide-success: #34d399;
   --ide-bg-secondary: #252525;
-  --ide-text-secondary: #71717a;
+  /*--ide-text-secondary: #71717a;*/
+  --ide-text-secondary: rgba(255, 255, 255, 0.58);
 }
 
 html, body, #root {

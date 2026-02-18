@@ -37,7 +37,7 @@ export const ThinkingStreamingMessage: React.FC<ThinkingStreamingMessageProps> =
       <div>
         <div className="mb-0.5 cursor-pointer" onClick={() => setIsExpended(!isExpended)}>
           <div className="italic text-white/60 flex items-center gap-1">
-            Thinking
+            Thinking{isStreaming ? '...' : ''}
             <span className={`inline-block transition-transform duration-200 text-[0.7em] ${isExpended ? 'rotate-180' : ''}`}>▼</span>
           </div>
         </div>
