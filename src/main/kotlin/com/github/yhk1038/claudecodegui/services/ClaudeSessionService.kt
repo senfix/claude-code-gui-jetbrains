@@ -10,8 +10,6 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -118,64 +116,32 @@ class ClaudeSessionService(private val project: Project) {
                     val type = entry["type"]?.jsonPrimitive?.content
                     val timestamp = entry["timestamp"]?.jsonPrimitive?.content
 
-                    when (type) {
-                        "user" -> {
-                            val messageObj = entry["message"]?.jsonObject
-                            val contentElement = messageObj?.get("content")
+                    // timestamp 추적
+                    if (timestamp != null) {
+                        if (firstTimestamp == null) firstTimestamp = timestamp
+                        lastTimestamp = timestamp
+                    }
 
-                            // 원본 content 구조를 그대로 보존
-                            // WebView에서 DTO로 파싱하여 타입별 처리
-                            if (contentElement != null) {
-                                // firstUserMessage 추출 (타이틀용)
-                                val textForTitle = when (contentElement) {
-                                    is JsonArray -> contentElement.mapNotNull { block ->
-                                        val blockObj = block.jsonObject
-                                        if (blockObj["type"]?.jsonPrimitive?.contentOrNull == "text") {
-                                            blockObj["text"]?.jsonPrimitive?.contentOrNull
-                                        } else null
-                                    }.joinToString("\n").takeIf { it.isNotEmpty() }
-                                    is JsonPrimitive -> contentElement.contentOrNull
-                                    else -> null
-                                }
-
-                                if (firstUserMessage == null && !textForTitle.isNullOrEmpty()) {
-                                    firstUserMessage = textForTitle
-                                    firstTimestamp = timestamp
-                                }
-                                lastTimestamp = timestamp
-
-                                // 원본 구조 그대로 전달
-                                messages.add(buildJsonObject {
-                                    put("type", "user")
-                                    put("content", contentElement)
-                                    put("timestamp", timestamp ?: "")
-                                })
-                            }
+                    // firstUserMessage 추출 (타이틀용)
+                    if (type == "user" && firstUserMessage == null) {
+                        val contentElement = entry["message"]?.jsonObject?.get("content")
+                        val textForTitle = when (contentElement) {
+                            is JsonArray -> contentElement.mapNotNull { block ->
+                                val blockObj = block.jsonObject
+                                if (blockObj["type"]?.jsonPrimitive?.contentOrNull == "text") {
+                                    blockObj["text"]?.jsonPrimitive?.contentOrNull
+                                } else null
+                            }.joinToString("\n").takeIf { it.isNotEmpty() }
+                            is JsonPrimitive -> contentElement.contentOrNull
+                            else -> null
                         }
-                        "assistant" -> {
-                            val messageObj = entry["message"]?.jsonObject
-                            val contentElement = messageObj?.get("content")
-                            val messageId = entry["message_id"]?.jsonPrimitive?.contentOrNull
-
-                            // 원본 content 배열을 그대로 보존 (tool_use 포함)
-                            if (contentElement != null) {
-                                lastTimestamp = timestamp
-
-                                messages.add(buildJsonObject {
-                                    put("type", "assistant")
-                                    if (messageId != null) {
-                                        put("message_id", messageId)
-                                    }
-                                    put("content", contentElement)
-                                    put("timestamp", timestamp ?: "")
-                                })
-                            }
-                        }
-                        "result" -> {
-                            // result 메시지도 보존
-                            messages.add(entry)
+                        if (!textForTitle.isNullOrEmpty()) {
+                            firstUserMessage = textForTitle
                         }
                     }
+
+                    // Raw JSONL entry 그대로 전달
+                    messages.add(entry)
                 } catch (e: Exception) {
                     // Skip malformed lines
                 }

@@ -8,6 +8,7 @@ import { createRequire } from 'module';
 import type { ViteDevServer } from 'vite';
 import type { WebSocket, WebSocketServer } from 'ws';
 import { readFile, readdir } from 'fs/promises';
+import { existsSync, statSync } from 'fs';
 import { join, basename } from 'path';
 import { homedir } from 'os';
 
@@ -41,12 +42,9 @@ interface ProjectEntry {
   lastModified: string;
 }
 
-interface SessionMessage {
-  type?: string;
-  role?: 'user' | 'assistant';
-  content: unknown;  // string or content block array - matches Kotlin behavior
-  timestamp: string;
-}
+// Raw JSONL entry - passed through as-is to match Kotlin backend
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SessionMessage = Record<string, any>;
 
 async function getProjectSessionsPath(workingDir: string): Promise<string> {
   // Convert project path to Claude's folder format (keeps leading dash)
@@ -55,36 +53,275 @@ async function getProjectSessionsPath(workingDir: string): Promise<string> {
   return join(homedir(), '.claude', 'projects', normalizedPath);
 }
 
+/**
+ * Extract session info from JSONL file (Cursor-compatible)
+ */
+interface MessageInfo {
+  uuid: string;
+  parentUuid: string | null;
+  type: string;
+  isSidechain: boolean;
+  timestamp: string | null;
+  isMeta: boolean;
+  content: any; // JsonElement
+}
+
+interface SessionInfo {
+  title: string;
+  lastTimestamp: string | null;
+  createdAt: string;
+  messageCount: number;
+  isSidechain: boolean;
+}
+
+function removeSystemTags(text: string): string {
+  // Remove XML-style tags and their content
+  const tagPattern = /<[^>]+>[^<]*<\/[^>]+>/g;
+  let cleaned = text.replace(tagPattern, '');
+
+  // Remove self-closing or unclosed tags
+  const singleTagPattern = /<[^>]+>/g;
+  cleaned = cleaned.replace(singleTagPattern, '');
+
+  // Clean up extra whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+  // If everything was removed, return original text
+  return cleaned.length > 0 ? cleaned : text;
+}
+
+function extractTextFromContent(content: any): string | null {
+  if (Array.isArray(content)) {
+    const lastTextBlock = content.filter((block: any) => block.type === 'text').pop();
+    return lastTextBlock?.text ?? null;
+  } else if (typeof content === 'string') {
+    return content;
+  }
+  return null;
+}
+
+function buildTranscript(leaf: MessageInfo, messages: Map<string, MessageInfo>): MessageInfo[] {
+  const transcript: MessageInfo[] = [];
+  let current: MessageInfo | undefined = leaf;
+
+  while (current) {
+    transcript.unshift(current); // Add to front
+    current = current.parentUuid ? messages.get(current.parentUuid) : undefined;
+  }
+
+  return transcript;
+}
+
+async function extractSessionInfo(file: string): Promise<SessionInfo> {
+  const messages = new Map<string, MessageInfo>(); // uuid -> MessageInfo
+  const summaries = new Map<string, string>(); // leafUuid -> summary
+  let lastUuid: string | null = null;
+  let firstTimestamp: string | null = null;
+  let messageCount = 0;
+  let firstUserPrompt: string | null = null;
+  let hasSlug = false;
+  let hasFileHistorySnapshot = false;
+  let skipSession = false;
+
+  // Step 1: Collect all messages into Map
+  const content = await readFile(file, 'utf-8');
+  const lines = content.trim().split('\n');
+
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    try {
+      const entry = JSON.parse(line);
+      messageCount++;
+
+      const uuid = entry.uuid ?? null;
+      const parentUuid = entry.parentUuid ?? null;
+      const type = entry.type ?? null;
+      const timestamp = entry.timestamp ?? null;
+      const isSidechain = entry.isSidechain ?? false;
+      const isMeta = entry.isMeta ?? false;
+
+      if (timestamp && firstTimestamp === null) {
+        firstTimestamp = timestamp;
+      }
+
+      // Cursor performRefresh: check first relevant message for isSidechain
+      if (messages.size === 0 && ['user', 'assistant', 'attachment', 'system'].includes(type)) {
+        if (isSidechain) {
+          skipSession = true;
+          break;
+        }
+      }
+
+      // Collect summaries
+      if (type === 'summary') {
+        const leafUuid = entry.leafUuid ?? null;
+        const summary = entry.summary ?? null;
+        if (leafUuid && summary) {
+          summaries.set(leafUuid, summary);
+        }
+      }
+
+      // Check for slug field
+      if (!hasSlug && entry.slug) {
+        hasSlug = true;
+      }
+
+      // Check for file-history-snapshot type
+      if (!hasFileHistorySnapshot && type === 'file-history-snapshot') {
+        hasFileHistorySnapshot = true;
+      }
+
+      // Add to messages Map (only relevant types)
+      if (uuid && type && ['user', 'assistant', 'attachment', 'system', 'progress'].includes(type)) {
+        const messageObj = entry.message ?? null;
+        const content = messageObj?.content ?? null;
+
+        messages.set(uuid, {
+          uuid,
+          parentUuid,
+          type,
+          isSidechain,
+          timestamp,
+          isMeta,
+          content,
+        });
+
+        lastUuid = uuid;
+      }
+    } catch {
+      // Skip malformed lines
+    }
+  }
+
+  if (skipSession) {
+    return {
+      title: 'Sidechain Session',
+      lastTimestamp: null,
+      createdAt: firstTimestamp || '',
+      messageCount,
+      isSidechain: true,
+    };
+  }
+
+  // Filter out sessions without BOTH slug AND file-history-snapshot (Cursor compatibility)
+  if (!hasSlug && !hasFileHistorySnapshot) {
+    return {
+      title: 'Incomplete Session',
+      lastTimestamp: null,
+      createdAt: firstTimestamp || '',
+      messageCount,
+      isSidechain: true, // Treat as sidechain to filter it out
+    };
+  }
+
+  // Filter out sessions without any user or assistant messages (empty sessions)
+  const hasUserOrAssistant = Array.from(messages.values()).some(
+    (m) => m.type === 'user' || m.type === 'assistant'
+  );
+  if (!hasUserOrAssistant) {
+    return {
+      title: 'Empty Session',
+      lastTimestamp: null,
+      createdAt: firstTimestamp || '',
+      messageCount,
+      isSidechain: true, // Treat as sidechain to filter it out
+    };
+  }
+
+  // Step 2: Find leaf messages (messages that are not parents of other messages)
+  const allParentUuids = new Set(Array.from(messages.values()).map((m) => m.parentUuid).filter(Boolean));
+  const leafMessages = Array.from(messages.values()).filter((m) => !allParentUuids.has(m.uuid));
+
+  // Step 3: Build transcripts from each leaf
+  const transcripts = leafMessages.map((leaf) => buildTranscript(leaf, messages));
+
+  // Step 4: Extract isSidechain from first message of first transcript (Cursor fetchSessions logic)
+  const isSidechainFromTranscript = transcripts[0]?.[0]?.isSidechain ?? false;
+
+  // Step 5: Extract first user prompt from first transcript
+  for (const transcript of transcripts) {
+    for (const msg of transcript) {
+      if (msg.type === 'user' && !msg.isMeta && firstUserPrompt === null) {
+        const text = extractTextFromContent(msg.content);
+        if (text) {
+          // Remove system tags from the prompt for cleaner title
+          firstUserPrompt = removeSystemTags(text.replace(/\n/g, ' ').trim());
+          break;
+        }
+      }
+    }
+    if (firstUserPrompt) break;
+  }
+
+  // Step 6: Determine title (first summary > firstUserPrompt > fallback)
+  const firstSummary = summaries.size > 0 ? Array.from(summaries.values())[0] : null;
+  const title = firstSummary ?? firstUserPrompt ?? 'No title';
+
+  // Step 7: Find last timestamp from all messages
+  const lastTimestamp = Array.from(messages.values())
+    .map((m) => m.timestamp)
+    .filter(Boolean)
+    .sort()
+    .pop() ?? null;
+
+  return {
+    title,
+    lastTimestamp,
+    createdAt: firstTimestamp || '',
+    messageCount,
+    isSidechain: isSidechainFromTranscript,
+  };
+}
+
 async function getSessionsList(workingDir: string): Promise<SessionEntry[]> {
   console.log('[dev-bridge] getSessionsList called with:', workingDir);
   try {
     const sessionsPath = await getProjectSessionsPath(workingDir);
-    const indexPath = join(sessionsPath, 'sessions-index.json');
-    console.log('[dev-bridge] Reading index from:', indexPath);
+    console.log('[dev-bridge] Sessions dir:', sessionsPath);
 
-    const indexContent = await readFile(indexPath, 'utf-8');
-    const index = JSON.parse(indexContent);
-    console.log('[dev-bridge] Found entries count:', index.entries?.length);
+    if (!existsSync(sessionsPath)) {
+      console.warn('[dev-bridge] Sessions dir not found:', sessionsPath);
+      return [];
+    }
+
+    // Scan all .jsonl files in directory (Cursor approach)
+    const files = await readdir(sessionsPath);
+    const jsonlFiles = files.filter((f) => f.endsWith('.jsonl'));
+
+    console.log('[dev-bridge] Found .jsonl files:', jsonlFiles.length);
+
+    const sessions: SessionEntry[] = [];
+
+    for (const file of jsonlFiles) {
+      try {
+        const sessionId = file.replace(/\.jsonl$/, '');
+        const fullPath = join(sessionsPath, file);
+        const sessionInfo = await extractSessionInfo(fullPath);
+
+        // Skip sidechain sessions
+        if (sessionInfo.isSidechain) {
+          continue;
+        }
+
+        sessions.push({
+          sessionId,
+          firstPrompt: sessionInfo.title,
+          messageCount: sessionInfo.messageCount,
+          created: sessionInfo.createdAt,
+          modified: sessionInfo.lastTimestamp ?? sessionInfo.createdAt,
+        });
+      } catch (err) {
+        console.warn('[dev-bridge] Failed to parse session file:', file, err);
+      }
+    }
 
     // Sort by modified date descending
-    const sessions = (index.entries || [])
-      .filter((e: any) => !e.isSidechain)
-      .map((entry: any) => ({
-        sessionId: entry.sessionId,
-        firstPrompt: entry.firstPrompt || 'No prompt',
-        messageCount: entry.messageCount || 0,
-        created: entry.created,
-        modified: entry.modified,
-        gitBranch: entry.gitBranch,
-      }))
-      .sort((a: SessionEntry, b: SessionEntry) =>
-        new Date(b.modified).getTime() - new Date(a.modified).getTime()
-      );
+    sessions.sort((a, b) => new Date(b.modified).getTime() - new Date(a.modified).getTime());
 
     console.log('[dev-bridge] Returning sessions count:', sessions.length);
     return sessions;
   } catch (error) {
-    console.error('[dev-bridge] Error reading sessions index:', error);
+    console.error('[dev-bridge] Error reading sessions:', error);
     return [];
   }
 }
@@ -165,22 +402,8 @@ async function loadSessionMessages(workingDir: string, targetSessionId: string):
 
       try {
         const entry = JSON.parse(line);
-
-        if (entry.type === 'user' && entry.message?.content) {
-          messages.push({
-            type: 'user',
-            role: 'user',
-            content: entry.message.content,  // Pass as-is (array or string)
-            timestamp: entry.timestamp,
-          });
-        } else if (entry.type === 'assistant' && entry.message?.content) {
-          messages.push({
-            type: 'assistant',
-            role: 'assistant',
-            content: entry.message.content,  // Pass as-is (array or string)
-            timestamp: entry.timestamp,
-          });
-        }
+        // Raw JSONL entry 그대로 전달 (type 필터링 제거)
+        messages.push(entry);
       } catch {
         // Skip invalid JSON lines
       }
