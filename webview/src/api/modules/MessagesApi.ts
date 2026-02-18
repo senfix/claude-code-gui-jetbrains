@@ -5,7 +5,7 @@ import { BridgeClient } from '../bridge/BridgeClient';
  * RESTful operations for messages (child resource of sessions)
  *
  * Messages belong to sessions (N:1 relationship)
- * Streaming subscriptions are now managed by SessionsApi.show()
+ * Session loading triggers SESSION_LOADED event via SessionsApi.load()
  */
 export class MessagesApi {
   constructor(private bridge: BridgeClient) {}
@@ -14,7 +14,7 @@ export class MessagesApi {
    * Send a message to a session
    * POST /sessions/:sessionId/messages
    *
-   * Note: Stream subscriptions are managed by SessionsApi.show()
+   * Note: Stream subscriptions are managed by useChatStream hook
    */
   async create(sessionId: string, content: string): Promise<void> {
     await this.bridge.request('SEND_MESSAGE', { sessionId, content });

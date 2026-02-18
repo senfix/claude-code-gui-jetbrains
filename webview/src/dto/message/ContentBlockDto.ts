@@ -33,7 +33,7 @@ export class ToolUseBlockDto extends ContentBlockDto {
 export class ToolResultBlockDto extends ContentBlockDto {
   override type: 'tool_result' = 'tool_result';
   tool_use_id!: string;
-  content!: string;
+  content!: string | AnyContentBlockDto[];
   is_error?: boolean;
 }
 

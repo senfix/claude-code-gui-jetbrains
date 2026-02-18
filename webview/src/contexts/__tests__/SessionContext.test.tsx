@@ -19,7 +19,7 @@ vi.mock('../BridgeContext', () => ({
 
 // Mock API
 const mockSessionsIndex = vi.fn();
-const mockSessionsShow = vi.fn();
+const mockSessionsLoad = vi.fn();
 const mockSessionsDestroy = vi.fn();
 const mockSessionsActivate = vi.fn();
 const mockSessionsCreate = vi.fn();
@@ -28,7 +28,7 @@ const mockSetWorkingDir = vi.fn();
 const mockApi = {
   sessions: {
     index: mockSessionsIndex,
-    show: mockSessionsShow,
+    load: mockSessionsLoad,
     destroy: mockSessionsDestroy,
     activate: mockSessionsActivate,
     create: mockSessionsCreate,
@@ -58,19 +58,6 @@ const mockSessionDtos: SessionMetaDto[] = [
   },
 ];
 
-const mockMessages = [
-  {
-    role: 'user' as const,
-    content: 'Hello',
-    timestamp: '2026-02-02T10:00:00Z',
-  },
-  {
-    role: 'assistant' as const,
-    content: 'Hi there',
-    timestamp: '2026-02-02T10:01:00Z',
-  },
-];
-
 // Test helper component
 interface TestConsumerProps {
   onMount: (ctx: ReturnType<typeof useSessionContext>) => void;
@@ -89,10 +76,15 @@ describe('SessionContext', () => {
     vi.clearAllMocks();
     mockIsConnected = true;
     mockSessionsIndex.mockResolvedValue([]);
-    mockSessionsShow.mockResolvedValue({ messages: [] });
+    mockSessionsLoad.mockResolvedValue(undefined);
     mockSessionsDestroy.mockResolvedValue(undefined);
     mockSessionsActivate.mockResolvedValue(undefined);
     mockSessionsCreate.mockResolvedValue(undefined);
+    (window as any).workingDirectory = '/test/workspace';
+  });
+
+  afterEach(() => {
+    delete (window as any).workingDirectory;
   });
 
   it('loadSessions - API 호출 후 sessions 상태 업데이트', async () => {
@@ -138,16 +130,15 @@ describe('SessionContext', () => {
     expect(capturedCtx!.sessions).toHaveLength(0);
   });
 
-  it('switchSession - 성공 시 currentSessionId 업데이트 및 메시지 로드', async () => {
+  it('switchSession - 성공 시 currentSessionId 업데이트 및 load 호출', async () => {
     mockSessionsIndex.mockResolvedValue(mockSessionDtos);
-    mockSessionsShow.mockResolvedValue({ messages: mockMessages });
+    mockSessionsLoad.mockResolvedValue(undefined);
 
-    const onMessagesLoaded = vi.fn();
     const onSessionChange = vi.fn();
     let capturedCtx: ReturnType<typeof useSessionContext> | null = null;
 
     render(
-      <SessionProvider onMessagesLoaded={onMessagesLoaded} onSessionChange={onSessionChange}>
+      <SessionProvider onSessionChange={onSessionChange}>
         <TestConsumer onMount={(ctx) => { capturedCtx = ctx; }} />
       </SessionProvider>
     );
@@ -160,11 +151,10 @@ describe('SessionContext', () => {
       await capturedCtx?.switchSession('session-1');
     });
 
-    expect(mockSessionsShow).toHaveBeenCalledWith('session-1');
+    expect(mockSessionsLoad).toHaveBeenCalledWith('session-1');
     await waitFor(() => {
       expect(capturedCtx?.currentSessionId).toBe('session-1');
       expect(capturedCtx?.sessionState).toBe('idle');
-      expect(onMessagesLoaded).toHaveBeenCalledWith(mockMessages);
       expect(onSessionChange).toHaveBeenCalledWith('session-1');
     });
   });
@@ -189,7 +179,7 @@ describe('SessionContext', () => {
       await capturedCtx?.switchSession('non-existent-id');
     });
 
-    expect(mockSessionsShow).not.toHaveBeenCalled();
+    expect(mockSessionsLoad).not.toHaveBeenCalled();
     expect(capturedCtx!.currentSessionId).toBeNull();
     expect(onSessionChange).not.toHaveBeenCalled();
   });
@@ -222,7 +212,7 @@ describe('SessionContext', () => {
 
   it('deleteSession - 현재 세션 삭제 시 currentSessionId null로 초기화', async () => {
     mockSessionsIndex.mockResolvedValue(mockSessionDtos);
-    mockSessionsShow.mockResolvedValue({ messages: mockMessages });
+    mockSessionsLoad.mockResolvedValue(undefined);
 
     let capturedCtx: ReturnType<typeof useSessionContext> | null = null;
 

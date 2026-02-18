@@ -13,7 +13,7 @@ export class SessionMetaDto {
   @ToDate('created') createdAt: Date;
   @ToDate('modified') updatedAt: Date;
 
-  messageCount: number;
+  messageCount: number = 0;
   projectPath?: string;
   gitBranch?: string;
   firstPrompt?: string;

@@ -31,9 +31,7 @@ export function To<T>(
       if (value) return value;
 
       const source = sourceField || key;
-      const sourceValue = obj[source];
-
-      return sourceValue ? actualTransformer(sourceValue) : value;
+      return source in obj ? actualTransformer(obj[source]) : value;
     })
   );
 }

@@ -53,8 +53,14 @@ function transformSingleBlock(block: unknown): AnyContentBlockDto {
     case 'tool_use':
       return plainToInstance(ToolUseBlockDto, block);
 
-    case 'tool_result':
-      return plainToInstance(ToolResultBlockDto, block);
+    case 'tool_result': {
+      const result = plainToInstance(ToolResultBlockDto, block);
+      // tool_result.content can be string or content block array
+      if (Array.isArray(blockObj.content)) {
+        result.content = transformContentBlocks(blockObj.content);
+      }
+      return result;
+    }
 
     case 'image':
       return plainToInstance(ImageBlockDto, block);
