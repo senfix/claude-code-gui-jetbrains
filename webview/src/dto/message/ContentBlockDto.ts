@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import type { LoadedMessageDto } from '../../types';
 
 export type ContentBlockType = 'text' | 'tool_use' | 'tool_result' | 'image';
 
@@ -25,6 +26,8 @@ export class ToolUseBlockDto extends ContentBlockDto {
   id!: string;
   name!: string;
   input!: Record<string, unknown>;
+  /** Runtime-only: merged tool_result message from subsequent user message */
+  tool_result?: LoadedMessageDto;
 }
 
 /**

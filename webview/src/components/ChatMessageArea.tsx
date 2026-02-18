@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react';
-import {getToolUses, LoadedMessageDto} from '../types';
+import { useEffect, useMemo, useRef } from 'react';
+import {getToolUses, LoadedMessageDto, isContentBlockArray} from '../types';
 import { MessageBubble } from './MessageBubble';
 import { ToolCard } from './ToolCard';
 import { ProjectSelector } from './ProjectSelector';
+import { ToolUseBlockDto, ToolResultBlockDto } from '../dto/message/ContentBlockDto';
 
 interface ChatMessageAreaProps {
   messages: LoadedMessageDto[];
@@ -33,7 +34,48 @@ export function ChatMessageArea({
     }
   }, [messages.length, messages[messages.length - 1]?.message?.content]);
 
-  const isEmpty = messages.length === 0;
+  // Merge tool_result user messages into preceding assistant's tool_use blocks
+  const mergedMessages = useMemo(() => {
+    // Build tool_use_id → ToolUseBlockDto lookup from all assistant messages
+    const toolUseMap = new Map<string, ToolUseBlockDto>();
+    for (const msg of messages) {
+      if (msg.type !== 'assistant') continue;
+      const content = msg.message?.content;
+      if (!isContentBlockArray(content)) continue;
+      for (const block of content) {
+        if (block.type === 'tool_use') {
+          toolUseMap.set((block as ToolUseBlockDto).id, block as ToolUseBlockDto);
+        }
+      }
+    }
+
+    // Attach tool_result messages to matching tool_use blocks and filter them out
+    const result: LoadedMessageDto[] = [];
+    for (const msg of messages) {
+      if (msg.type === 'user') {
+        const content = msg.message?.content;
+        if (isContentBlockArray(content)) {
+          const isToolResultOnly = content.every(block => block.type === 'tool_result');
+          if (isToolResultOnly) {
+            // Attach this message to each matching tool_use block
+            for (const block of content) {
+              if (block.type === 'tool_result') {
+                const toolUseBlock = toolUseMap.get((block as ToolResultBlockDto).tool_use_id);
+                if (toolUseBlock) {
+                  toolUseBlock.tool_result = msg;
+                }
+              }
+            }
+            continue; // Don't add to result (hidden)
+          }
+        }
+      }
+      result.push(msg);
+    }
+    return result;
+  }, [messages]);
+
+  const isEmpty = mergedMessages.length === 0;
 
   // No working directory: show ProjectSelector or loading
   if (!workingDirectory) {
@@ -60,23 +102,9 @@ export function ChatMessageArea({
   // Render messages with widgets
   return (
     <div ref={containerRef} className="max-w-4xl mx-auto text-xs">
-      {messages.map((message) => (
+      {mergedMessages.map((message) => (
         <div key={message.uuid} onClick={() => console.log('message', message.uuid, message)}>
           <MessageBubble message={message} onRetry={onRetry} />
-
-          {/* Show tool cards for this message */}
-          {(() => {
-            const toolUses = getToolUses(message);
-            return toolUses.length > 0 ? toolUses.map((toolUse) => (
-              <div key={toolUse.id} className="px-6">
-                <ToolCard
-                  toolUse={toolUse}
-                  onApprove={approveToolUse}
-                  onDeny={denyToolUse}
-                />
-              </div>
-            )) : null;
-          })()}
         </div>
       ))}
       <div ref={messagesEndRef} />

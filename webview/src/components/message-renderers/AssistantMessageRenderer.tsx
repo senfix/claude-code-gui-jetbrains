@@ -1,8 +1,10 @@
 import React from 'react';
-import {getTextContent, LoadedMessageDto} from '../../types';
+import { LoadedMessageDto, isContentBlockArray } from '../../types';
+import { ToolUseBlockDto } from '../../dto/message/ContentBlockDto';
 import { StreamingMessage } from '../StreamingMessage';
 import { StreamingIndicator } from './components/StreamingIndicator';
 import { ContextPills } from './components/ContextPills';
+import { ToolRenderer } from './ToolRenderer';
 
 interface AssistantMessageRendererProps {
   message: LoadedMessageDto;
@@ -11,15 +13,10 @@ interface AssistantMessageRendererProps {
 
 export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> = ({
   message,
-  // onRetry,
 }) => {
-  // const { copied, copy } = useCopyToClipboard();
-
-  // const handleCopy = () => {
-  //   copy(getTextContent(message));
-  // };
-
-  // const handleRetry = onRetry ? () => onRetry(message.id) : undefined;
+  const content = message.message?.content;
+  const blocks = isContentBlockArray(content) ? content : [];
+  const hasContent = blocks.length > 0 || typeof content === 'string';
 
   return (
     <div className="group py-2 px-4 pl-4">
@@ -31,20 +28,44 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
         <div className="flex-1 min-w-0">
           {message.isStreaming && <StreamingIndicator />}
 
-          {message.message?.content ? (
-            <StreamingMessage
-              content={getTextContent(message)}
-              isStreaming={message.isStreaming ?? false}
-              className="text-zinc-200 text-[13px] leading-relaxed"
-            />
+          {hasContent ? (
+            <>
+              {typeof content === 'string' ? (
+                <StreamingMessage
+                  content={content}
+                  isStreaming={message.isStreaming ?? false}
+                  className="text-zinc-200 text-[13px] leading-relaxed"
+                />
+              ) : (
+                blocks.map((block, index) => {
+                  if (block.type === 'text') {
+                    return (
+                      <StreamingMessage
+                        key={index}
+                        content={block.text}
+                        isStreaming={message.isStreaming ?? false}
+                        className="text-zinc-200 text-[13px] leading-relaxed"
+                      />
+                    );
+                  }
+                  if (block.type === 'tool_use') {
+                    return (
+                      <ToolRenderer
+                        key={(block as ToolUseBlockDto).id}
+                        toolUse={block as ToolUseBlockDto}
+                      />
+                    );
+                  }
+                  return null;
+                })
+              )}
+            </>
           ) : (
             <span className="text-zinc-600 italic">Thinking...</span>
           )}
 
           {message.context && <ContextPills context={message.context} />}
         </div>
-
-        {/*<MessageActions copied={copied} onCopy={handleCopy} onRetry={handleRetry} />*/}
       </div>
     </div>
   );
