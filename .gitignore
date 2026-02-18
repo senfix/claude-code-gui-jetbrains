@@ -5,6 +5,7 @@
 *.iws
 *.ipr
 *.iml
+ignore/
 
 # Gradle
 .gradle/
