@@ -5,6 +5,7 @@ import { StreamingMessage } from '../StreamingMessage';
 import { StreamingIndicator } from './components/StreamingIndicator';
 import { ContextPills } from './components/ContextPills';
 import { ToolRenderer } from './ToolRenderer';
+import {ThinkingStreamingMessage} from "@/components/ThinkingStreamingMessage.tsx";
 
 interface AssistantMessageRendererProps {
   message: LoadedMessageDto;
@@ -39,6 +40,17 @@ export const AssistantMessageRenderer: React.FC<AssistantMessageRendererProps> =
               ) : (
                 blocks.map((block, index) => {
                   if (block.type === 'text') {
+                    if (block.text.startsWith('{"type":"thinking"')) {
+                      return (
+                          <ThinkingStreamingMessage
+                              key={index}
+                              content={block.text}
+                              isStreaming={message.isStreaming ?? false}
+                              className="text-zinc-200 text-[13px] leading-relaxed"
+                          />
+                      );
+                    }
+
                     return (
                       <StreamingMessage
                         key={index}
