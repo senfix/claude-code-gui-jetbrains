@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import { LoadedMessageDto, getTextContent } from '../../types';
 import { useCopyToClipboard } from './hooks/useCopyToClipboard';
 import { ContextPills } from './components/ContextPills';
@@ -15,6 +15,7 @@ const INTERRUPTED_TEXT = '[Request interrupted by user]';
 
 export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({ message }) => {
   const { copied, copy } = useCopyToClipboard();
+  const [isExpended, setIsExpended] = useState(false);
   const parsedContent = parseUserContent(getTextContent(message));
 
   const handleCopy = () => {
@@ -35,7 +36,7 @@ export const UserMessageRenderer: React.FC<UserMessageRendererProps> = ({ messag
     <div className="group py-2 px-4">
       <div className="flex items-start gap-2">
         <div className="min-w-0">
-          <div className="bg-zinc-800/80 border border-white/25 rounded-lg px-[8px] py-[3.5px]">
+          <div className={`bg-zinc-800/80 border border-white/25 rounded-lg px-[8px] py-[3.5px] ${isExpended ? '' : 'max-h-[280px] overflow-hidden'}`} onClick={() => setIsExpended(!isExpended)}>
             <div className="text-white/80 text-[13px] leading-relaxed whitespace-pre-wrap break-words">
               {parsedContent.text}
             </div>
