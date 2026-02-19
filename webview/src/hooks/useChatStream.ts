@@ -207,7 +207,7 @@ export function useChatStream(options: UseChatStreamOptions): UseChatStreamRetur
   // LoadedMessageDto's @Type/@Transform decorators handle nested transformation automatically.
   const loadMessages = useCallback((msgs: LoadedMessageDto[]) => {
     const convertedMessages = msgs
-      .filter(raw => raw.type === 'user' || raw.type === 'assistant')
+      // .filter(raw => raw.type === 'user' || raw.type === 'assistant')
       .map(raw => toInstance(LoadedMessageDto, raw));
 
     setMessages(convertedMessages);
