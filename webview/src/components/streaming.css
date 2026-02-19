@@ -155,11 +155,12 @@
 [data-streamdown="inline-code"] {
   background: rgba(127, 251, 255, 0.175);
   color: rgba(127, 251, 255, 0.9);
-  border-radius: 3px;
-  padding: 0.15em 0.4em;
-  font-family: var(--ide-font-code);
-  font-size: 0.9em;
+  border-radius: 3px !important;
+  padding: 0.15em 0.4em !important;
+  font-family: var(--ide-font-code) !important;
+  font-size: 0.9em !important;
   font-weight: 500;
+  line-height: 1 !important;
 }
 
 /* Code block */
