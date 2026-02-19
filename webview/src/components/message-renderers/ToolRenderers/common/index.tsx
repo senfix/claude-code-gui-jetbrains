@@ -22,7 +22,7 @@ export const ToolHeader = (props: {
     const {name, description = '', inProgress = false, children} = props;
 
     return (
-        <div className="flex items-start gap-1.5 text-[13px] mb-2">
+        <div className="flex items-start gap-1.5 text-[13px] mb-1">
             <div className="text-white text-[13px] font-semibold">
                 <span className="">{name}</span>
                 {inProgress && (

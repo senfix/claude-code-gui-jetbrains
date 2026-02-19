@@ -34,7 +34,7 @@ export function GrepRenderer(props: Props) {
     return (
         <ToolWrapper>
             <ToolHeader name={name}>
-                <div className="text-white/80 text-[12px] line-clamp-2">"{pattern}" (in {path})</div>
+                <div className="text-white/80 text-[12px] line-clamp-2 break-all">"{pattern}" (in {path})</div>
             </ToolHeader>
 
             {toolResult?.content && <div
