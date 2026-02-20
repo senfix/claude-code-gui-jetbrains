@@ -2,8 +2,6 @@ import React from 'react';
 import { LoadedMessageDto, isContentBlockArray } from '../../types';
 import { ToolUseBlockDto } from '../../dto/message/ContentBlockDto';
 import { StreamingMessage } from '../StreamingMessage';
-import { StreamingIndicator } from './components/StreamingIndicator';
-import { ContextPills } from './components/ContextPills';
 import { ToolRenderer } from './ToolRenderer';
 import {ThinkingStreamingMessage} from "@/components/ThinkingStreamingMessage.tsx";
 import {ToolWrapper} from "@/components/message-renderers/ToolRenderers/common";
