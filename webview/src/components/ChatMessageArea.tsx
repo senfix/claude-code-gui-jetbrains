@@ -5,16 +5,8 @@ import { ProjectSelector } from './ProjectSelector';
 import { ToolUseBlockDto, ToolResultBlockDto } from '../dto/message/ContentBlockDto';
 import { transformContentBlocks } from '../mappers/contentBlockTransformer';
 import type { SubAgentMessage } from '../dto/message/ContentBlockDto';
-
-interface ChatMessageAreaProps {
-  messages: LoadedMessageDto[];
-  streamingMessageId: string | null;
-  workingDirectory: string | null;
-  onSelectProject: (path: string) => void;
-  onRetry: (messageId: string) => void;
-  approveToolUse: (toolId: string) => void;
-  denyToolUse: (toolId: string) => void;
-}
+import { useSessionContext } from '../contexts/SessionContext';
+import { useChatStreamContext } from '../contexts/ChatStreamContext';
 
 /**
  * Convert progress entries into SubAgentMessage array.
@@ -39,15 +31,9 @@ function buildSubAgentMessages(progressEntries: LoadedMessageDto[]): SubAgentMes
     });
 }
 
-export function ChatMessageArea({
-  messages,
-  streamingMessageId: _streamingMessageId,
-  workingDirectory,
-  onSelectProject,
-  onRetry,
-  // approveToolUse,
-  // denyToolUse,
-}: ChatMessageAreaProps) {
+export function ChatMessageArea() {
+  const { workingDirectory, setWorkingDirectory } = useSessionContext();
+  const { messages, retry: onRetry } = useChatStreamContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -148,7 +134,7 @@ export function ChatMessageArea({
         </div>
       );
     }
-    return <ProjectSelector onSelectProject={onSelectProject} />;
+    return <ProjectSelector onSelectProject={setWorkingDirectory} />;
   }
 
   // Empty state: no messages yet

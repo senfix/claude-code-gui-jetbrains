@@ -1,42 +1,24 @@
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { ChatInput } from './ChatInput';
 import { SessionHeader } from './SessionHeader';
 import { ChatMessageArea } from './ChatMessageArea';
+import { PendingPermissionsBanner } from './PendingPermissionsBanner';
 import { useSessionContext } from '../contexts/SessionContext';
 import { useChatStreamContext } from '../contexts/ChatStreamContext';
 import { useChatInputFocus } from '../contexts/ChatInputFocusContext';
 
 export function ChatPanel() {
-  // Use ChatStreamContext for unified state management
   const {
     messages,
     isStreaming,
-    isStopped,
-    input,
-    setInput,
-    handleSubmit,
-    retry,
-    stop,
-    continue: continueGeneration,
-    streamingMessageId,
-    tools,
   } = useChatStreamContext();
 
   const {
     currentSessionId,
-    sessionState,
-    workingDirectory,
-    setWorkingDirectory,
     saveMessages,
   } = useSessionContext();
 
-  const {
-    pendingPermissions,
-    approveToolUse,
-    denyToolUse,
-  } = tools;
-
-  const { focus: focusInput } = useChatInputFocus();
+  const { textareaRef, focus: focusInput } = useChatInputFocus();
 
   // Auto-save messages when they change (debounced in useSession)
   const lastMessage = messages[messages.length - 1];
@@ -50,27 +32,24 @@ export function ChatPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSessionId, messages.length, lastMessageId, lastMessageContent, isStreaming]);
 
-  const handleSelectProject = useCallback((path: string) => {
-    setWorkingDirectory(path);
-  }, [setWorkingDirectory]);
-
-  // Click on non-interactive area → focus input
-  const handleContainerClick = useCallback((e: React.MouseEvent) => {
+  // 빈 영역 클릭 시 textarea로 포커스 이동
+  // mousedown 시점에 확인해야 포커스 이동 전 activeElement를 비교할 수 있음
+  const handleContainerMouseDown = useCallback((e: React.MouseEvent) => {
     const target = e.target as HTMLElement;
     if (target.closest('button, a, input, textarea, select, [role="button"], [contenteditable]')) {
       return;
     }
+    if (document.activeElement === textareaRef.current) {
+      // 이미 포커스 상태 → 브라우저가 포커스를 빼앗지 못하게 방지
+      // e.preventDefault();
+      return;
+    }
+    e.preventDefault();
     focusInput();
-  }, [focusInput]);
-
-  // Handle submit - session creation is handled by ChatStreamContext.sendMessage
-  const handleSubmitWithSession = useCallback((e?: React.FormEvent) => {
-    e?.preventDefault();
-    handleSubmit(e);
-  }, [handleSubmit]);
+  }, [textareaRef, focusInput]);
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100" onClick={handleContainerClick}>
+    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100" onMouseDown={handleContainerMouseDown}>
       {/* Header - Minimal */}
       <div className="flex-shrink-0 border-b border-zinc-800">
         <SessionHeader />
@@ -78,45 +57,14 @@ export function ChatPanel() {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto pb-16">
-        <ChatMessageArea
-          messages={messages}
-          streamingMessageId={streamingMessageId}
-          workingDirectory={workingDirectory}
-          onSelectProject={handleSelectProject}
-          onRetry={retry}
-          approveToolUse={approveToolUse}
-          denyToolUse={denyToolUse}
-        />
+        <ChatMessageArea />
       </div>
 
-      {/* Pending Permissions Banner */}
-      {pendingPermissions.length > 0 && (
-        <div className="flex-shrink-0 bg-amber-900/20 border-t border-amber-700/50 px-6 py-3">
-          <div className="max-w-4xl mx-auto flex items-center gap-3">
-            <svg className="w-5 h-5 text-amber-400" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 11a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm1-3H7V4h2v5z" />
-            </svg>
-            <span className="text-sm text-amber-400 font-medium">
-              {pendingPermissions.length} tool{pendingPermissions.length > 1 ? 's' : ''} awaiting approval
-            </span>
-          </div>
-        </div>
-      )}
+      <PendingPermissionsBanner />
 
       {/* Input Area */}
       <div className="flex-shrink-0">
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSubmit={handleSubmitWithSession}
-          isStreaming={isStreaming}
-          isStopped={isStopped}
-          onStop={stop}
-          onContinue={continueGeneration}
-          disabled={sessionState === 'error' || !workingDirectory}
-          sessionState={sessionState}
-          sessionId={currentSessionId}
-        />
+        <ChatInput />
       </div>
     </div>
   );

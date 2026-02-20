@@ -3,6 +3,25 @@ import { render, screen } from '@testing-library/react';
 import { ChatMessageArea } from '../ChatMessageArea';
 import type { LoadedMessageDto, ToolUse } from '../../types';
 
+// Mock contexts
+const mockSessionContext = {
+  workingDirectory: null as string | null,
+  setWorkingDirectory: vi.fn(),
+};
+
+const mockChatStreamContext = {
+  messages: [] as LoadedMessageDto[],
+  retry: vi.fn(),
+};
+
+vi.mock('../../contexts/SessionContext', () => ({
+  useSessionContext: () => mockSessionContext,
+}));
+
+vi.mock('../../contexts/ChatStreamContext', () => ({
+  useChatStreamContext: () => mockChatStreamContext,
+}));
+
 // Mock child components
 vi.mock('../MessageBubble', () => ({
   MessageBubble: ({ message }: { message: LoadedMessageDto }) => (
@@ -25,31 +44,19 @@ vi.mock('../ProjectSelector', () => ({
 }));
 
 describe('ChatMessageArea', () => {
-  const mockOnSelectProject = vi.fn();
-  const mockOnRetry = vi.fn();
-  const mockApproveToolUse = vi.fn();
-  const mockDenyToolUse = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock scrollIntoView
     Element.prototype.scrollIntoView = vi.fn();
     // Clear kotlinBridge
     delete (window as any).kotlinBridge;
+    // Reset context defaults
+    mockSessionContext.workingDirectory = null;
+    mockChatStreamContext.messages = [];
   });
 
   it('shows ProjectSelector when no working directory and no kotlinBridge', () => {
-    render(
-      <ChatMessageArea
-        messages={[]}
-        streamingMessageId={null}
-        workingDirectory={null}
-        onSelectProject={mockOnSelectProject}
-        onRetry={mockOnRetry}
-        approveToolUse={mockApproveToolUse}
-        denyToolUse={mockDenyToolUse}
-      />
-    );
+    render(<ChatMessageArea />);
 
     expect(screen.getByTestId('project-selector')).toBeInTheDocument();
     expect(screen.getByText('Select Project')).toBeInTheDocument();
@@ -58,88 +65,53 @@ describe('ChatMessageArea', () => {
   it('shows loading message when no working directory with kotlinBridge', () => {
     (window as any).kotlinBridge = {};
 
-    render(
-      <ChatMessageArea
-        messages={[]}
-        streamingMessageId={null}
-        workingDirectory={null}
-        onSelectProject={mockOnSelectProject}
-        onRetry={mockOnRetry}
-        approveToolUse={mockApproveToolUse}
-        denyToolUse={mockDenyToolUse}
-      />
-    );
+    render(<ChatMessageArea />);
 
     expect(screen.getByText('워킹 디렉토리를 불러오는 중...')).toBeInTheDocument();
     expect(screen.queryByTestId('project-selector')).not.toBeInTheDocument();
   });
 
   it('shows empty state message when no messages with working directory', () => {
-    render(
-      <ChatMessageArea
-        messages={[]}
-        streamingMessageId={null}
-        workingDirectory="/test/path"
-        onSelectProject={mockOnSelectProject}
-        onRetry={mockOnRetry}
-        approveToolUse={mockApproveToolUse}
-        denyToolUse={mockDenyToolUse}
-      />
-    );
+    mockSessionContext.workingDirectory = '/test/path';
+
+    render(<ChatMessageArea />);
 
     expect(screen.getByText('메시지를 입력하세요')).toBeInTheDocument();
   });
 
   it('renders user message correctly', () => {
-    const userMessage: LoadedMessageDto = {
+    mockSessionContext.workingDirectory = '/test/path';
+    mockChatStreamContext.messages = [{
       uuid: 'msg1',
       type: 'user',
       message: { role: 'user', content: 'Hello, assistant!' },
       timestamp: new Date().toISOString(),
-    };
+    }];
 
-    render(
-      <ChatMessageArea
-        messages={[userMessage]}
-        streamingMessageId={null}
-        workingDirectory="/test/path"
-        onSelectProject={mockOnSelectProject}
-        onRetry={mockOnRetry}
-        approveToolUse={mockApproveToolUse}
-        denyToolUse={mockDenyToolUse}
-      />
-    );
+    render(<ChatMessageArea />);
 
     expect(screen.getByTestId('message-bubble-msg1')).toBeInTheDocument();
     expect(screen.getByText('user: Hello, assistant!')).toBeInTheDocument();
   });
 
   it('renders assistant message correctly', () => {
-    const assistantMessage: LoadedMessageDto = {
+    mockSessionContext.workingDirectory = '/test/path';
+    mockChatStreamContext.messages = [{
       uuid: 'msg2',
       type: 'assistant',
       message: { role: 'assistant', content: 'Hello, user!' },
       timestamp: new Date().toISOString(),
-    };
+    }];
 
-    render(
-      <ChatMessageArea
-        messages={[assistantMessage]}
-        streamingMessageId={null}
-        workingDirectory="/test/path"
-        onSelectProject={mockOnSelectProject}
-        onRetry={mockOnRetry}
-        approveToolUse={mockApproveToolUse}
-        denyToolUse={mockDenyToolUse}
-      />
-    );
+    render(<ChatMessageArea />);
 
     expect(screen.getByTestId('message-bubble-msg2')).toBeInTheDocument();
     expect(screen.getByText('assistant: Hello, user!')).toBeInTheDocument();
   });
 
   it('renders ToolCard for messages with toolUses in content blocks', () => {
-    const messageWithTool: LoadedMessageDto = {
+    mockSessionContext.workingDirectory = '/test/path';
+    mockChatStreamContext.messages = [{
       uuid: 'msg3',
       type: 'assistant',
       message: {
@@ -150,19 +122,9 @@ describe('ChatMessageArea', () => {
         ] as any,
       },
       timestamp: new Date().toISOString(),
-    };
+    }];
 
-    render(
-      <ChatMessageArea
-        messages={[messageWithTool]}
-        streamingMessageId={null}
-        workingDirectory="/test/path"
-        onSelectProject={mockOnSelectProject}
-        onRetry={mockOnRetry}
-        approveToolUse={mockApproveToolUse}
-        denyToolUse={mockDenyToolUse}
-      />
-    );
+    render(<ChatMessageArea />);
 
     expect(screen.getByTestId('message-bubble-msg3')).toBeInTheDocument();
     expect(screen.getByTestId('tool-card-tool1')).toBeInTheDocument();
@@ -171,7 +133,8 @@ describe('ChatMessageArea', () => {
 
   it('renders multiple messages correctly', () => {
     const now = new Date().toISOString();
-    const messages: LoadedMessageDto[] = [
+    mockSessionContext.workingDirectory = '/test/path';
+    mockChatStreamContext.messages = [
       {
         uuid: 'msg1',
         type: 'user',
@@ -192,17 +155,7 @@ describe('ChatMessageArea', () => {
       },
     ];
 
-    render(
-      <ChatMessageArea
-        messages={messages}
-        streamingMessageId={null}
-        workingDirectory="/test/path"
-        onSelectProject={mockOnSelectProject}
-        onRetry={mockOnRetry}
-        approveToolUse={mockApproveToolUse}
-        denyToolUse={mockDenyToolUse}
-      />
-    );
+    render(<ChatMessageArea />);
 
     expect(screen.getByTestId('message-bubble-msg1')).toBeInTheDocument();
     expect(screen.getByTestId('message-bubble-msg2')).toBeInTheDocument();
@@ -213,7 +166,8 @@ describe('ChatMessageArea', () => {
   });
 
   it('renders multiple tool uses for a single message', () => {
-    const messageWithTools: LoadedMessageDto = {
+    mockSessionContext.workingDirectory = '/test/path';
+    mockChatStreamContext.messages = [{
       uuid: 'msg4',
       type: 'assistant',
       message: {
@@ -225,19 +179,9 @@ describe('ChatMessageArea', () => {
         ] as any,
       },
       timestamp: new Date().toISOString(),
-    };
+    }];
 
-    render(
-      <ChatMessageArea
-        messages={[messageWithTools]}
-        streamingMessageId={null}
-        workingDirectory="/test/path"
-        onSelectProject={mockOnSelectProject}
-        onRetry={mockOnRetry}
-        approveToolUse={mockApproveToolUse}
-        denyToolUse={mockDenyToolUse}
-      />
-    );
+    render(<ChatMessageArea />);
 
     expect(screen.getByTestId('tool-card-tool1')).toBeInTheDocument();
     expect(screen.getByTestId('tool-card-tool2')).toBeInTheDocument();
