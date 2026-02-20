@@ -17,7 +17,7 @@ export function WriteRenderer(props: RendererProps) {
 
     return (
         <ToolWrapper message={props.message}>
-            <ToolHeader name="Write" inProgress={!props.toolResult}>
+            <ToolHeader name="Write" inProgress={!props.toolResult && lineCount <= 0} className="mb-1">
                 <div className="text-white/80 text-[11px] cursor-pointer hover:underline font-mono" onClick={() => getAdapter().openFile(filePath)}>{fileName}</div>
             </ToolHeader>
             <div className="text-white/50 text-[11px]">{lineCount} lines</div>

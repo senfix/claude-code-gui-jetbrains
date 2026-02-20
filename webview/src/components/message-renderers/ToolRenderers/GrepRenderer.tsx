@@ -7,6 +7,11 @@ class GrepToolUseDto extends ToolUseBlockDto {
     declare input: {
         path: string;
         pattern: string;
+    } | {
+        pattern: string;
+        glob: string;
+        output_mode: string;
+        head_limit: number;
     };
 }
 
@@ -22,14 +27,17 @@ export function GrepRenderer(props: RendererProps) {
     const toolResult = props.toolResult?.message?.content[0] as GrepToolResultDto | undefined;
 
     const name = toolUse.name;
-    const path = toolUse.input?.path ?? '';
     const pattern = toolUse.input?.pattern ?? '';
     // const output = toolResult?.message?.content[0].content ?? '' as string;
 
     return (
         <ToolWrapper message={props.message}>
-            <ToolHeader name={name}>
-                <div className="text-white/80 text-[12px] line-clamp-2 break-all">"{pattern}" (in {path})</div>
+            <ToolHeader name={name} className="mb-2.5">
+                <div className="text-white/80 text-[12px] line-clamp-2 break-all">
+                    "{pattern}"{` `}
+                    {'path' in toolUse.input && `(in ${toolUse.input.path})`}
+                    {'glob' in toolUse.input && `(glob: ${toolUse.input.glob})`}
+                </div>
             </ToolHeader>
 
             {toolResult?.content && (
