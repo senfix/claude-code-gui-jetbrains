@@ -5,6 +5,11 @@ import { useBridgeContext } from './BridgeContext';
 import { useApi } from './ApiContext';
 import { getAdapter, onBridgeReady } from '../adapters';
 
+declare global {
+  interface Window {
+    workingDirectory?: string;
+  }
+}
 
 interface SessionContextValue {
   // State
@@ -43,8 +48,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [sessionState, setSessionState] = useState<SessionState>('idle');
   const [isLoading, setIsLoading] = useState(false);
   const [workingDirectory, setWorkingDirectoryState] = useState<string | null>(() => {
+    // 1순위: JetBrains가 주입한 값
+    // 2순위: URL 파라미터 (브라우저에서 직접 접근 시)
     const params = new URLSearchParams(window.location.search);
-    return params.get('workingDir') || null;
+    return window.workingDirectory || params.get('workingDir') || null;
   });
 
   // Update API workingDir when it changes
@@ -71,15 +78,28 @@ export function SessionProvider({ children }: SessionProviderProps) {
     }
   }, [api, workingDirectory]);
 
-  // JetBrains에서 kotlinBridgeReady 이벤트 후 IDE adapter 재초기화
+  // JetBrains에서 kotlinBridgeReady 이벤트 후 workingDirectory 주입 감지
   useEffect(() => {
     const handleBridgeReady = () => {
+      // Re-initialize IDE adapter when Kotlin bridge becomes available
       onBridgeReady();
+
+      if (window.workingDirectory && !workingDirectory) {
+        setWorkingDirectoryState(window.workingDirectory);
+        api.setWorkingDir(window.workingDirectory);
+      }
     };
 
     window.addEventListener('kotlinBridgeReady', handleBridgeReady);
+
+    // 이미 kotlinBridge가 있고 workingDirectory가 주입된 경우
+    if (window.kotlinBridge && window.workingDirectory && !workingDirectory) {
+      setWorkingDirectoryState(window.workingDirectory);
+      api.setWorkingDir(window.workingDirectory);
+    }
+
     return () => window.removeEventListener('kotlinBridgeReady', handleBridgeReady);
-  }, []);
+  }, [api, workingDirectory]);
 
 
   // loadSessions - using new API

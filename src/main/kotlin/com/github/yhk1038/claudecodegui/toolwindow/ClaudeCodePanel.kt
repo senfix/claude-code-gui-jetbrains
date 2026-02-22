@@ -225,11 +225,13 @@ class ClaudeCodePanel(
     }
 
     private fun injectBridge(frame: CefFrame) {
+        val workingDir = project.basePath?.replace("\\", "\\\\")?.replace("'", "\\'") ?: ""
         val hashJs = if (initialHash != null) {
             val escapedHash = initialHash.replace("\\", "\\\\").replace("'", "\\'")
             "window.location.hash = '$escapedHash';"
         } else ""
         val js = """
+            window.workingDirectory = '$workingDir';
             $hashJs
             window.kotlinBridge = {
                 send: function(message) {
@@ -258,13 +260,9 @@ class ClaudeCodePanel(
         val devMode = System.getProperty("claude.dev.mode", "false").toBoolean() ||
                       System.getenv("CLAUDE_DEV_MODE") == "true"
 
-        val workingDirParam = project.basePath?.let {
-            "?workingDir=${java.net.URLEncoder.encode(it, "UTF-8")}"
-        } ?: ""
-
         if (devMode && isViteDevServerRunning()) {
             logger.info("Loading WebView from Vite dev server")
-            browser.loadURL("http://localhost:5173$workingDirParam")
+            browser.loadURL("http://localhost:5173")
             return
         }
 
@@ -274,7 +272,7 @@ class ClaudeCodePanel(
 
         // Use IntelliJ's built-in server with custom request handler to serve resources
         val builtInServerPort = org.jetbrains.ide.BuiltInServerManager.getInstance().port
-        val url = "http://localhost:$builtInServerPort${WebViewRequestHandler.PREFIX}/index.html$workingDirParam"
+        val url = "http://localhost:$builtInServerPort${WebViewRequestHandler.PREFIX}/index.html"
         logger.info("Loading WebView via custom HTTP handler: $url")
         browser.loadURL(url)
     }
