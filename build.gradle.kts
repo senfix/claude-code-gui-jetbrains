@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.yhk1038"
-version = "0.1.0"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -32,7 +32,7 @@ kotlin {
 intellijPlatform {
     pluginConfiguration {
         id = "com.github.yhk1038.claude-code-gui"
-        name = "Claude Code GUI"
+        name = "Claude Code with GUI"
         version = project.version.toString()
         description = "Claude Code GUI for JetBrains IDEs - Cursor-like UX"
         vendor {
@@ -44,15 +44,17 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
-            <h3>0.1.0 - Initial Release</h3>
+            <h3>0.2.0 - Feature-Complete Initial Release</h3>
             <ul>
-                <li>Chat interface with Claude Code agent</li>
-                <li>Streaming responses with Markdown rendering</li>
-                <li>Tool call visualization (file read/write, bash, search)</li>
-                <li>Diff cards with Apply/Reject actions</li>
-                <li>Permission management for file operations</li>
-                <li>Session management with multiple tabs</li>
-                <li>Integrated settings panel</li>
+                <li>Chat interface with Claude Code agent and streaming Markdown responses</li>
+                <li>Tool call visualization for file read/write, bash, search, and skill operations</li>
+                <li>Diff cards with Apply/Reject actions for code changes</li>
+                <li>Permission management dialog for file and bash operations</li>
+                <li>Session management with multiple editor tabs and session dropdown</li>
+                <li>Image attachment rendering from session content blocks</li>
+                <li>Integrated settings panel under Tools menu</li>
+                <li>Auto-focus chat input on window activation</li>
+                <li>Unified workingDir source via URL parameter (SSOT)</li>
             </ul>
         """.trimIndent()
     }
