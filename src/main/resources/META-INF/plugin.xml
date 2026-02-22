@@ -4,17 +4,26 @@
     <vendor email="yhk1038@github.com" url="https://github.com/yhk1038">yhk1038</vendor>
 
     <description><![CDATA[
-    Claude Code GUI for JetBrains IDEs.
+    <h2>Claude Code GUI for JetBrains IDEs</h2>
+    <p>
+        Provides a Cursor-like UX for Claude Code agent interaction directly within your JetBrains IDE.
+        Chat with Claude, review diffs, manage permissions — all without leaving your editor.
+    </p>
 
-    Provides Cursor-like UX for Claude Code agent interaction directly within your IDE.
-
-    Features:
+    <h3>Features</h3>
     <ul>
-        <li>Chat with Claude Code agent</li>
-        <li>Streaming responses with Markdown rendering</li>
-        <li>File context attachment</li>
-        <li>Diff cards with Apply/Reject actions</li>
-        <li>Permission management for file operations</li>
+        <li><b>Chat Interface</b> — Converse with Claude Code agent in a rich, streaming chat panel</li>
+        <li><b>Markdown Rendering</b> — Full Markdown support with syntax-highlighted code blocks</li>
+        <li><b>Tool Call Visualization</b> — See file reads, writes, bash commands, and search results as interactive cards</li>
+        <li><b>Diff Review</b> — Inline diff cards with one-click Apply/Reject actions</li>
+        <li><b>Permission Management</b> — Grant or deny file operation permissions in real-time</li>
+        <li><b>Session Management</b> — Multiple chat sessions with tab support</li>
+        <li><b>Settings Panel</b> — Configure Claude Code CLI path and preferences from within the IDE</li>
+    </ul>
+
+    <h3>Requirements</h3>
+    <ul>
+        <li><a href="https://docs.anthropic.com/en/docs/claude-code/overview">Claude Code CLI</a> installed and configured</li>
     </ul>
     ]]></description>
 

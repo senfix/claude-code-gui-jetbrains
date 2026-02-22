@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.yhk1038"
-version = "1.0-SNAPSHOT"
+version = "0.1.0"
 
 repositories {
     mavenCentral()
@@ -43,6 +43,21 @@ intellijPlatform {
             sinceBuild = "253"
             untilBuild = "253.*"
         }
+        changeNotes = """
+            <h3>0.1.0 - Initial Release</h3>
+            <ul>
+                <li>Chat interface with Claude Code agent</li>
+                <li>Streaming responses with Markdown rendering</li>
+                <li>Tool call visualization (file read/write, bash, search)</li>
+                <li>Diff cards with Apply/Reject actions</li>
+                <li>Permission management for file operations</li>
+                <li>Session management with multiple tabs</li>
+                <li>Integrated settings panel</li>
+            </ul>
+        """.trimIndent()
+    }
+    publishing {
+        token = providers.environmentVariable("PUBLISH_TOKEN")
     }
 }
 
