@@ -4,6 +4,7 @@ import com.github.yhk1038.claudecodegui.actions.OpenClaudeCodeAction
 import com.github.yhk1038.claudecodegui.services.ClaudeCliService
 import com.github.yhk1038.claudecodegui.services.ClaudeSessionService
 import com.github.yhk1038.claudecodegui.services.DiffService
+import com.github.yhk1038.claudecodegui.services.SessionBroadcastService
 import com.github.yhk1038.claudecodegui.services.SessionData
 import com.github.yhk1038.claudecodegui.settings.SettingsManager
 import com.github.yhk1038.claudecodegui.toolwindow.ClaudeCodePanel
@@ -26,10 +27,11 @@ class WebViewBridge(
     private val panel: ClaudeCodePanel,
     private val scope: CoroutineScope,
     private val project: com.intellij.openapi.project.Project
-) {
+) : SessionBroadcastService.BroadcastTarget {
     private val logger = Logger.getInstance(WebViewBridge::class.java)
     private val diffService: DiffService = DiffService.getInstance(project)
     private val sessionService: ClaudeSessionService = project.service()
+    private val broadcastService: SessionBroadcastService = project.service()
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -243,6 +245,8 @@ class WebViewBridge(
         // Update current session ID from WebView
         if (sessionId != null) {
             currentSessionId = sessionId
+            // Subscribe to session broadcasts
+            broadcastService.subscribe(sessionId, this)
         }
 
         // Lazy-start: start per-tab CLI process if not running
@@ -258,6 +262,14 @@ class WebViewBridge(
         }
 
         sendCliMessage(message)
+
+        // Broadcast user message to other tabs viewing the same session (exclude self)
+        if (currentSessionId != null) {
+            broadcastService.broadcast(currentSessionId!!, "USER_MESSAGE_BROADCAST", mapOf(
+                "content" to message.trim(),
+                "sessionId" to currentSessionId!!
+            ), exclude = this)
+        }
 
         return buildJsonObject {
             put("status", "ok")
@@ -502,6 +514,9 @@ class WebViewBridge(
             }
         }
 
+        // Subscribe to session broadcasts (implicit subscription on LOAD_SESSION)
+        broadcastService.subscribe(sessionId, this)
+
         // Send SESSION_LOADED event with messages
         panel.sendToWebView("SESSION_LOADED", mapOf(
             "sessionId" to session.id,
@@ -557,6 +572,9 @@ class WebViewBridge(
      * Note: This does NOT reset the current tab's state - that's handled by openNewTab() in SessionContext
      */
     private fun handleNewSession(): JsonObject {
+        // Unsubscribe from current session
+        broadcastService.unsubscribe(this)
+
         ApplicationManager.getApplication().invokeLater {
             val newSessionId = UUID.randomUUID().toString()
             OpenClaudeCodeAction.openSession(project, newSessionId)
@@ -725,7 +743,12 @@ class WebViewBridge(
         currentSessionId = data.session_id
         logger.info("System message: subtype=${data.subtype}, session=${data.session_id}")
 
-        panel.sendToWebView("STREAM_EVENT", mapOf(
+        // Subscribe to session on system message (session initialization)
+        if (data.session_id != null) {
+            broadcastService.subscribe(data.session_id, this)
+        }
+
+        broadcastOrSend("STREAM_EVENT", mapOf(
             "eventType" to "system",
             "subtype" to data.subtype,
             "sessionId" to data.session_id,
@@ -806,7 +829,7 @@ class WebViewBridge(
             }
         }
 
-        panel.sendToWebView("ASSISTANT_MESSAGE", mapOf(
+        broadcastOrSend("ASSISTANT_MESSAGE", mapOf(
             "messageId" to messageId,
             "content" to contentBlocks
         ))
@@ -874,7 +897,7 @@ class WebViewBridge(
                 }
             }
 
-            panel.sendToWebView("STREAM_EVENT", deltaData)
+            broadcastOrSend("STREAM_EVENT", deltaData)
 
         } catch (e: Exception) {
             logger.error("Failed to parse stream event", e)
@@ -888,7 +911,7 @@ class WebViewBridge(
         val status = data.subtype ?: data.status ?: "unknown"
         logger.info("Result message: status=$status, isError=${data.is_error}")
 
-        panel.sendToWebView("RESULT_MESSAGE", mapOf(
+        broadcastOrSend("RESULT_MESSAGE", mapOf(
             "status" to status,
             "isError" to data.is_error,
             "result" to data.result,
@@ -910,7 +933,7 @@ class WebViewBridge(
     private fun handleUnknownMessage(type: String, raw: JsonElement) {
         logger.warn("Unknown message type: $type")
 
-        panel.sendToWebView("UNKNOWN_MESSAGE", mapOf(
+        broadcastOrSend("UNKNOWN_MESSAGE", mapOf(
             "type" to type,
             "raw" to raw.toString()
         ))
@@ -944,7 +967,7 @@ class WebViewBridge(
             )
         }
 
-        panel.sendToWebView("SERVICE_ERROR", errorData)
+        broadcastOrSend("SERVICE_ERROR", errorData)
     }
 
     /**
@@ -961,6 +984,9 @@ class WebViewBridge(
      * Cleanup on disposal
      */
     fun dispose() {
+        // Unsubscribe from session broadcasts
+        broadcastService.unsubscribe(this)
+
         messageSubscription?.cancel()
         errorSubscription?.cancel()
         pendingToolUses.clear()
@@ -971,5 +997,24 @@ class WebViewBridge(
         }
 
         logger.info("WebViewBridge disposed")
+    }
+
+    // ─── BroadcastTarget implementation ──────────────────────────────────────────
+
+    override fun sendBroadcastMessage(type: String, payload: Map<String, Any?>) {
+        panel.sendToWebView(type, payload)
+    }
+
+    /**
+     * Send message to all subscribers of the current session.
+     * Falls back to direct panel.sendToWebView() if no session is active.
+     */
+    private fun broadcastOrSend(type: String, payload: Map<String, Any?>) {
+        val sessionId = currentSessionId
+        if (sessionId != null) {
+            broadcastService.broadcast(sessionId, type, payload)
+        } else {
+            panel.sendToWebView(type, payload)
+        }
     }
 }

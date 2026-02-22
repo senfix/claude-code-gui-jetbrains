@@ -45,6 +45,10 @@
         <projectService
             serviceImplementation="com.github.yhk1038.claudecodegui.services.ClaudeSessionService"/>
 
+        <!-- Project service for session broadcast (Pub/Sub) -->
+        <projectService
+            serviceImplementation="com.github.yhk1038.claudecodegui.services.SessionBroadcastService"/>
+
         <!-- Application service for CLI management -->
         <applicationService
             serviceImplementation="com.github.yhk1038.claudecodegui.services.ClaudeCliService"/>
