@@ -138,10 +138,15 @@ export function ChatMessageArea() {
     return <ProjectSelector onSelectProject={setWorkingDirectory} />;
   }
 
+  const log = () => {
+    // console.log('messages', messages);
+    // console.log('mergedMessages', mergedMessages)
+  }
+
   // Empty state: no messages yet
   if (isEmpty) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center" onClick={log}>
         <p className="text-zinc-500 text-sm">메시지를 입력하세요</p>
       </div>
     );
@@ -149,7 +154,7 @@ export function ChatMessageArea() {
 
   // Render messages with widgets
   return (
-    <div ref={containerRef} className="max-w-4xl mx-auto text-xs">
+    <div ref={containerRef} className="max-w-4xl mx-auto text-xs" onClick={log}>
       {mergedMessages.map((message) => (
         <div key={message.uuid} onClick={() => console.log('message', message.uuid, message)}>
           <MessageBubble message={message} onRetry={onRetry} />

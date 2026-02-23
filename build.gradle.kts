@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.yhk1038"
-version = "0.2.1"
+version = "0.2.2"
 
 repositories {
     mavenCentral()
@@ -44,6 +44,11 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
+            <h3>0.2.2 - Patch</h3>
+            <ul>
+                <li>Fixed header and input area with improved chat panel layout</li>
+                <li>Updated chat input container styling and max-width</li>
+            </ul>
             <h3>0.2.1 - Patch</h3>
             <ul>
                 <li>Fix deprecated API usage: replaced UIUtil.isUnderDarcula() with JBColor.isBright()</li>

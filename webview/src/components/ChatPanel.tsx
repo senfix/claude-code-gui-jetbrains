@@ -25,21 +25,21 @@ export function ChatPanel() {
   }, [textareaRef, focusInput]);
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 text-zinc-100" onMouseDown={handleContainerMouseDown}>
+    <div className="w-full h-screen bg-neutral-900 text-zinc-100" onMouseDown={handleContainerMouseDown}>
       {/* Header - Minimal */}
-      <div className="flex-shrink-0 border-b border-zinc-800">
+      <div className="fixed w-full top-0 bg-blend-darken bg-neutral-900 z-10">
         <SessionHeader />
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto pb-16">
+      <div className="flex-1 overflow-y-auto w-full h-screen pt-10 pb-36 bg-neutral-900 z-0">
         <ChatMessageArea />
       </div>
 
       <PendingPermissionsBanner />
 
       {/* Input Area */}
-      <div className="flex-shrink-0">
+      <div className="fixed w-full bottom-0 z-10">
         <ChatInput />
       </div>
     </div>

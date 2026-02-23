@@ -119,11 +119,11 @@ export function ChatInput() {
   }, [onChange, slashCmd]);
 
   return (
-    <div className="px-3 pb-3 pt-2">
+    <div className="max-w-[44rem] mx-auto px-3 pb-3 pt-2">
       {/* 메인 인풋 컨테이너 */}
       <div
         className={`
-          relative rounded-lg border bg-zinc-900/80
+          relative rounded-lg border bg-[#1e1e21]
           transition-colors duration-150
           ${isFocused && mode !== 'plan' ? modeConfig.borderColor : 'border-zinc-700'}
         `}
