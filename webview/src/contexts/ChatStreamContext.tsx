@@ -5,6 +5,7 @@ import { useTools } from '../hooks/useTools';
 import { useBridgeContext } from './BridgeContext';
 import { useSessionContext } from './SessionContext';
 import { LoadedMessageDto, Context } from '../types';
+import { InputMode } from '../types/chatInput';
 
 interface ChatStreamContextType {
   // From useChatStream
@@ -19,8 +20,8 @@ interface ChatStreamContextType {
   setInput: (input: string) => void;
 
   // Actions
-  sendMessage: (content: string, context?: Context[]) => void;
-  handleSubmit: (e?: React.FormEvent) => void;
+  sendMessage: (content: string, context?: Context[], inputMode?: InputMode) => void;
+  handleSubmit: (e?: React.FormEvent, inputMode?: InputMode) => void;
   stop: () => void;
   continue: () => void;
   retry: (messageId: string) => void;
@@ -116,7 +117,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
 
   // sendMessage: add to local state + send to Kotlin + create session if needed
   const sendMessage = useCallback(
-    (content: string, context?: Context[]) => {
+    (content: string, context?: Context[], inputMode?: InputMode) => {
       // Resolve session ID: use existing or generate new one
       let sessionId = session.currentSessionId;
       const isNewSession = !sessionId;
@@ -136,6 +137,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
         content,
         context: context || [],
         workingDir: session.workingDirectory,
+        ...(inputMode ? { inputMode } : {}),
       }).then((response) => {
         if (response?.status === 'error') {
           console.error('[ChatStreamContext] Kotlin error:', response.error);
@@ -149,7 +151,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
 
   // handleSubmit: convenience wrapper for form submission
   const handleSubmit = useCallback(
-    (e?: React.FormEvent) => {
+    (e?: React.FormEvent, inputMode?: InputMode) => {
       if (e) {
         e.preventDefault();
       }
@@ -157,7 +159,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
       const trimmedInput = input.trim();
       if (!trimmedInput) return;
 
-      sendMessage(trimmedInput);
+      sendMessage(trimmedInput, undefined, inputMode);
       setInput('');
     },
     [input, sendMessage]

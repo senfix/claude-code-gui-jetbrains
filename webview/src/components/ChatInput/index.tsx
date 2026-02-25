@@ -89,7 +89,7 @@ export function ChatInput() {
       e.preventDefault();
       if (!disabled && !isStreaming && value.trim()) {
         inputHistory.pushToHistory(value);
-        onSubmit();
+        onSubmit(undefined, mode);
       }
     } else if (e.key === 'ArrowUp' && !palette.showSlashCommands) {
       const historyValue = inputHistory.navigateUp(value);
@@ -169,7 +169,7 @@ export function ChatInput() {
             disabled={disabled}
             hasValue={!!value.trim()}
             onSlashCommand={palette.handleSlashButtonClick}
-            onSubmit={onSubmit}
+            onSubmit={() => onSubmit(undefined, mode)}
             onStop={onStop}
             onContinue={onContinue}
           />

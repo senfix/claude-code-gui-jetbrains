@@ -74,6 +74,11 @@ function TestChatComponent() {
       <button data-testid="continue" onClick={ctx.continue}>
         Continue
       </button>
+      <button data-testid="submit-with-mode" onClick={() => {
+        ctx.sendMessage('Hello with mode', undefined, 'plan');
+      }}>
+        Send with Mode
+      </button>
       <div data-testid="messages">
         {ctx.messages.map((m) => (
           <div key={m.uuid} data-testid={`msg-${m.type}`}>
@@ -164,6 +169,31 @@ describe('채팅 스트리밍 통합 테스트', () => {
       context: [],
     });
     expect(screen.getByTestId('input')).toHaveValue('');
+  });
+
+  it('sendMessage: inputMode가 bridge.send payload에 포함된다', async () => {
+    mockSession.currentSessionId = 'existing-session';
+
+    render(
+      <ChatStreamProvider>
+        <TestChatComponent />
+      </ChatStreamProvider>
+    );
+
+    const submitWithMode = screen.getByTestId('submit-with-mode');
+
+    await act(async () => {
+      fireEvent.click(submitWithMode);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('messages-count')).toHaveTextContent('2');
+    });
+
+    expect(mockBridge.send).toHaveBeenCalledWith('SEND_MESSAGE', expect.objectContaining({
+      content: 'Hello with mode',
+      inputMode: 'plan',
+    }));
   });
 
   it('STREAM_EVENT 수신: assistant 메시지에 text가 축적된다', async () => {
