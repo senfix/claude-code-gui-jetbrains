@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconType } from '../../types/slashCommandPanel';
+import { IconType } from '@/types/commandPalette';
 
 interface IconProps {
   className?: string;
@@ -40,14 +40,13 @@ export const SettingsIcon: React.FC<IconProps> = ({ className, style }) => (
   </svg>
 );
 
-// Icon selector helper
 export const getIcon = (iconType: IconType | undefined): React.FC<IconProps> | null => {
   switch (iconType) {
-    case 'terminal': return TerminalIcon;
-    case 'file': return FileIcon;
-    case 'link': return LinkIcon;
-    case 'command': return CommandIcon;
-    case 'settings': return SettingsIcon;
+    case IconType.Terminal: return TerminalIcon;
+    case IconType.File: return FileIcon;
+    case IconType.Link: return LinkIcon;
+    case IconType.Command: return CommandIcon;
+    case IconType.Settings: return SettingsIcon;
     default: return null;
   }
 };

@@ -44,6 +44,8 @@ export interface UseChatStreamReturn {
   stop: () => void;
   /** isStopped = false 설정. bridge 전송은 ChatStreamContext가 담당. */
   continue: () => void;
+  /** 스트림 관련 모든 내부 상태를 초기화 (clear conversation 등에서 사용) */
+  resetStreamState: () => void;
 }
 
 /**
@@ -322,6 +324,28 @@ export function useChatStream(options: UseChatStreamOptions): UseChatStreamRetur
     setIsStopped(false);
   }, []);
 
+  // Reset all stream-related internal state (for clear conversation)
+  const resetStreamState = useCallback(() => {
+    setIsStopped(false);
+    setIsStreaming(false);
+    setStreamingMessageId(null);
+    streamingMessageIdRef.current = null;
+    pendingTextRef.current = '';
+    pendingThinkingRef.current = '';
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    if (devModeTimeoutRef.current) {
+      clearTimeout(devModeTimeoutRef.current);
+      devModeTimeoutRef.current = null;
+    }
+    if (devModeIntervalRef.current) {
+      clearInterval(devModeIntervalRef.current);
+      devModeIntervalRef.current = null;
+    }
+  }, []);
+
   // Subscribe to Kotlin events
   useEffect(() => {
     // STREAM_EVENT handler
@@ -504,5 +528,6 @@ export function useChatStream(options: UseChatStreamOptions): UseChatStreamRetur
     retry,
     stop,
     continue: continueGeneration,
+    resetStreamState,
   };
 }

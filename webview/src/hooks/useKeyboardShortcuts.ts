@@ -1,43 +1,27 @@
 import { useEffect } from 'react';
-import { getAdapter } from '@/adapters';
+import { useCommandPaletteRegistry } from '@/commandPalette/CommandPaletteProvider';
 
 /**
  * Hook to handle keyboard shortcuts in the WebView.
+ * Delegates to KeyboardRegistry for all shortcut handling.
  *
- * Shortcuts:
- * - Cmd+N (Mac) / Ctrl+N (Windows/Linux): Open new tab (clicks the new tab button)
- * - Cmd+, (Mac) / Ctrl+, (Windows/Linux): Open settings in new tab
+ * Registered shortcuts (via KeyboardRegistry):
+ * - Cmd+N (Mac) / Ctrl+N (Windows/Linux): Open new tab
+ * - Cmd+, (Mac) / Ctrl+, (Windows/Linux): Open settings
+ * - Cmd+Shift+C (Mac) / Ctrl+Shift+C (Windows/Linux): Clear conversation (from ClearCommand)
  */
 export function useKeyboardShortcuts() {
+  const { keyboardRegistry } = useCommandPaletteRegistry();
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+N (Mac) or Ctrl+N (Windows/Linux) - Open new tab
-      // Note: In JetBrains IDE, this is handled by NewClaudeCodeTabAction instead
-      if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+      if (keyboardRegistry.handleKeyEvent(e)) {
         e.preventDefault();
         e.stopPropagation();
-
-        const newTabButton = document.getElementById('new-tab-button');
-        if (newTabButton) {
-          newTabButton.click();
-        }
-      }
-
-      // Cmd+, (Mac) or Ctrl+, (Windows/Linux) - Open settings in new tab
-      if ((e.metaKey || e.ctrlKey) && e.key === ',') {
-        e.preventDefault();
-        e.stopPropagation();
-
-        getAdapter().openSettings().catch((error) => {
-          console.error('[useKeyboardShortcuts] Failed to open settings:', error);
-        });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [keyboardRegistry]);
 }

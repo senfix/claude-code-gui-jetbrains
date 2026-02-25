@@ -1,13 +1,12 @@
 import { useCallback, useEffect, KeyboardEvent, useState } from 'react';
-import { SlashCommandPanel } from '../SlashCommandPanel';
+import { CommandPalettePanel } from '@/commandPalette/ui/CommandPalettePanel';
+import { useCommandPalette } from '@/commandPalette/hooks/useCommandPalette';
 import { INPUT_MODES } from '../../types/chatInput';
 import { useInputMode } from './hooks/useInputMode';
 import { InputModeTag } from './InputModeTag';
 import { ActionButtons } from './ActionButtons';
 import { useChatInputFocus } from '../../contexts/ChatInputFocusContext';
-import { useSlashCommandPanelConfig } from './hooks/useSlashCommandPanelConfig';
 import { useInputHistory } from './hooks/useInputHistory';
-import { useSlashCommandInteraction } from './hooks/useSlashCommandInteraction';
 import { useTextareaAutoResize } from './hooks/useTextareaAutoResize';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useSessionContext } from '@/contexts/SessionContext';
@@ -38,14 +37,7 @@ export function ChatInput() {
 
   const modeConfig = INPUT_MODES[mode];
 
-  // Slash command panel hook
-  const panel = useSlashCommandPanelConfig({});
-
-  const slashCmd = useSlashCommandInteraction({
-    panel,
-    onChange,
-    textareaRef,
-  });
+  const palette = useCommandPalette({ onChange, textareaRef });
 
   // Auto-resize textarea
   useTextareaAutoResize({ textareaRef, value });
@@ -90,7 +82,7 @@ export function ChatInput() {
     }
 
     // Slash command interaction
-    if (slashCmd.handleSlashKeyDown(e, value)) return;
+    if (palette.handleSlashKeyDown(e, value)) return;
 
     // Enter: submit
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -99,24 +91,24 @@ export function ChatInput() {
         inputHistory.pushToHistory(value);
         onSubmit();
       }
-    } else if (e.key === 'ArrowUp' && !slashCmd.showSlashCommands) {
+    } else if (e.key === 'ArrowUp' && !palette.showSlashCommands) {
       const historyValue = inputHistory.navigateUp(value);
       if (historyValue === null) return;
       e.preventDefault();
       onChange(historyValue);
-    } else if (e.key === 'ArrowDown' && !slashCmd.showSlashCommands) {
+    } else if (e.key === 'ArrowDown' && !palette.showSlashCommands) {
       const historyValue = inputHistory.navigateDown();
       if (historyValue === null) return;
       e.preventDefault();
       onChange(historyValue);
     }
-  }, [disabled, isStreaming, value, onSubmit, inputHistory, onChange, slashCmd, cycleMode]);
+  }, [disabled, isStreaming, value, onSubmit, inputHistory, onChange, palette, cycleMode]);
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     onChange(newValue);
-    slashCmd.detectSlashCommand(newValue);
-  }, [onChange, slashCmd]);
+    palette.detectSlashCommand(newValue);
+  }, [onChange, palette]);
 
   return (
     <div className="max-w-[44rem] mx-auto px-3 pb-3 pt-2">
@@ -129,15 +121,15 @@ export function ChatInput() {
         `}
       >
         {/* Slash command panel */}
-        {slashCmd.showSlashCommands && (
+        {palette.showSlashCommands && (
           <div className="absolute bottom-full left-0 mb-2 w-full z-20">
-            <SlashCommandPanel
-              sections={panel.filteredSections}
-              selectedSectionIndex={panel.selectedSectionIndex}
-              selectedItemIndex={panel.selectedItemIndex}
-              onItemClick={panel.selectItem}
-              onItemExecute={slashCmd.handlePanelItemExecute}
-              onClose={slashCmd.closePanel}
+            <CommandPalettePanel
+              sections={palette.filteredSections}
+              selectedSectionIndex={palette.selectedSectionIndex}
+              selectedItemIndex={palette.selectedItemIndex}
+              onItemClick={palette.selectItem}
+              onItemExecute={palette.handlePanelItemExecute}
+              onClose={palette.closePanel}
             />
           </div>
         )}
@@ -176,7 +168,7 @@ export function ChatInput() {
             isStopped={isStopped}
             disabled={disabled}
             hasValue={!!value.trim()}
-            onSlashCommand={slashCmd.handleSlashButtonClick}
+            onSlashCommand={palette.handleSlashButtonClick}
             onSubmit={onSubmit}
             onStop={onStop}
             onContinue={onContinue}

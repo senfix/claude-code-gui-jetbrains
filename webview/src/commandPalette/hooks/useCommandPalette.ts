@@ -1,0 +1,217 @@
+import { useState, useCallback, useMemo, KeyboardEvent, RefObject } from 'react';
+import { PanelSectionId, PanelItemType, ActionItem, CommandItem, PanelItem } from '@/types/commandPalette';
+import { useCommandPaletteRegistry } from '../CommandPaletteProvider';
+
+interface UseCommandPaletteOptions {
+  onChange: (value: string) => void;
+  textareaRef: RefObject<HTMLTextAreaElement | null>;
+}
+
+export function useCommandPalette({ onChange, textareaRef }: UseCommandPaletteOptions) {
+  const { registry } = useCommandPaletteRegistry();
+
+  // --- Panel state (from useSlashCommandPanel) ---
+  const [filterQuery, setFilterQuery] = useState('');
+  const [selectedSectionIndex, setSelectedSectionIndex] = useState(0);
+  const [selectedItemIndex, setSelectedItemIndex] = useState(0);
+  const [showSlashCommands, setShowSlashCommands] = useState(false);
+
+  const sections = useMemo(() => registry.buildSections(), [registry]);
+
+  const filteredSections = useMemo(() => {
+    if (!filterQuery) return sections;
+
+    const slashCommandsSection = sections.find(s => s.id === PanelSectionId.SlashCommands);
+    if (!slashCommandsSection) return [];
+
+    const filteredItems = slashCommandsSection.items.filter(item =>
+      item.label.toLowerCase().includes(filterQuery.toLowerCase())
+    );
+
+    if (filteredItems.length === 0) return [];
+
+    return [{
+      ...slashCommandsSection,
+      showDividerAbove: false,
+      items: filteredItems,
+    }];
+  }, [sections, filterQuery]);
+
+  const selectItem = useCallback((sectionIndex: number, itemIndex: number) => {
+    setSelectedSectionIndex(sectionIndex);
+    setSelectedItemIndex(itemIndex);
+  }, []);
+
+  const resetSelection = useCallback(() => {
+    setSelectedSectionIndex(0);
+    setSelectedItemIndex(0);
+    setFilterQuery('');
+  }, []);
+
+  const getTotalItemCount = useCallback(() => {
+    return filteredSections.reduce((count, section) => count + section.items.length, 0);
+  }, [filteredSections]);
+
+  const getFlatIndex = useCallback(() => {
+    let flatIndex = 0;
+    for (let i = 0; i < selectedSectionIndex; i++) {
+      flatIndex += filteredSections[i]?.items.length ?? 0;
+    }
+    return flatIndex + selectedItemIndex;
+  }, [filteredSections, selectedSectionIndex, selectedItemIndex]);
+
+  const moveSelection = useCallback((direction: 'up' | 'down') => {
+    const sectionsToUse = filteredSections;
+    if (sectionsToUse.length === 0) return;
+
+    let newSectionIndex = selectedSectionIndex;
+    let newItemIndex = selectedItemIndex;
+
+    if (direction === 'down') {
+      const currentSection = sectionsToUse[newSectionIndex];
+      if (!currentSection) return;
+
+      if (newItemIndex < currentSection.items.length - 1) {
+        newItemIndex++;
+      } else if (newSectionIndex < sectionsToUse.length - 1) {
+        newSectionIndex++;
+        newItemIndex = 0;
+      } else {
+        newSectionIndex = 0;
+        newItemIndex = 0;
+      }
+    } else {
+      if (newItemIndex > 0) {
+        newItemIndex--;
+      } else if (newSectionIndex > 0) {
+        newSectionIndex--;
+        newItemIndex = sectionsToUse[newSectionIndex].items.length - 1;
+      } else {
+        newSectionIndex = sectionsToUse.length - 1;
+        newItemIndex = sectionsToUse[newSectionIndex].items.length - 1;
+      }
+    }
+
+    setSelectedSectionIndex(newSectionIndex);
+    setSelectedItemIndex(newItemIndex);
+  }, [filteredSections, selectedSectionIndex, selectedItemIndex]);
+
+  // Toggle/Link branches removed - no registered items use these types
+  const executeSelectedItem = useCallback(() => {
+    const section = filteredSections[selectedSectionIndex];
+    if (!section) return;
+
+    const item = section.items[selectedItemIndex];
+    if (!item) return;
+
+    if (item.type === PanelItemType.Action || item.type === PanelItemType.Command) {
+      (item as ActionItem | CommandItem).action();
+    }
+  }, [filteredSections, selectedSectionIndex, selectedItemIndex]);
+
+  // --- Interaction (from useSlashCommandInteraction) ---
+
+  const executeAndClear = useCallback(() => {
+    executeSelectedItem();
+    onChange('');
+    setShowSlashCommands(false);
+    resetSelection();
+  }, [executeSelectedItem, onChange, resetSelection]);
+
+  const closePanel = useCallback(() => {
+    setShowSlashCommands(false);
+    resetSelection();
+  }, [resetSelection]);
+
+  const handleSlashKeyDown = useCallback((
+    e: KeyboardEvent<HTMLTextAreaElement>,
+    currentValue: string,
+  ): boolean => {
+    if (showSlashCommands) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        executeAndClear();
+        return true;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveSelection('up');
+        return true;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveSelection('down');
+        return true;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closePanel();
+        return true;
+      }
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey && currentValue.startsWith('/')) {
+      e.preventDefault();
+      executeAndClear();
+      return true;
+    }
+
+    return false;
+  }, [showSlashCommands, executeAndClear, closePanel, moveSelection]);
+
+  const detectSlashCommand = useCallback((newValue: string) => {
+    if (newValue.startsWith('/')) {
+      const query = newValue.substring(1).split(' ')[0];
+      setShowSlashCommands(true);
+      setFilterQuery(query);
+      setSelectedSectionIndex(0);
+      setSelectedItemIndex(0);
+    } else {
+      setShowSlashCommands(false);
+      resetSelection();
+    }
+  }, [resetSelection]);
+
+  const handlePanelItemExecute = useCallback((item: PanelItem) => {
+    if (item.type === PanelItemType.Action || item.type === PanelItemType.Command) {
+      (item as any).action?.();
+    }
+    onChange('');
+    setShowSlashCommands(false);
+    resetSelection();
+  }, [onChange, resetSelection]);
+
+  const handleSlashButtonClick = useCallback(() => {
+    if (!showSlashCommands) {
+      onChange('/');
+      setShowSlashCommands(true);
+      setFilterQuery('');
+      setSelectedSectionIndex(0);
+      setSelectedItemIndex(0);
+      textareaRef.current?.focus();
+    }
+  }, [showSlashCommands, onChange, textareaRef]);
+
+  return {
+    // Panel state
+    sections,
+    filteredSections,
+    selectedSectionIndex,
+    selectedItemIndex,
+    filterQuery,
+    setFilterQuery,
+    selectItem,
+    executeSelectedItem,
+    resetSelection,
+    moveSelection,
+    getTotalItemCount,
+    getFlatIndex,
+    // Interaction
+    showSlashCommands,
+    handleSlashKeyDown,
+    detectSlashCommand,
+    handlePanelItemExecute,
+    handleSlashButtonClick,
+    closePanel,
+  };
+}

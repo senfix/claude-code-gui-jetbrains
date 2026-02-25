@@ -25,6 +25,7 @@ interface ChatStreamContextType {
   continue: () => void;
   retry: (messageId: string) => void;
 
+  resetStreamState: () => void;
   // From useChatStream (message manipulation)
   clearMessages: () => void;
   loadMessages: (msgs: LoadedMessageDto[]) => void;
@@ -215,6 +216,8 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
     stop,
     continue: continueGeneration,
     retry,
+
+    resetStreamState: chatStream.resetStreamState,
 
     // Message manipulation
     clearMessages: chatStream.clearMessages,

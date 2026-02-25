@@ -4,6 +4,7 @@ import { useRouter, isSettingsRoute } from './router';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 function AppContent() {
+  useKeyboardShortcuts();
   const { route } = useRouter();
 
   if (isSettingsRoute(route)) {
@@ -14,8 +15,6 @@ function AppContent() {
 }
 
 function App() {
-  useKeyboardShortcuts();
-
   return (
     <AppProviders>
       <AppContent />

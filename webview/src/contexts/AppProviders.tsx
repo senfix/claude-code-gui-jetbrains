@@ -7,6 +7,7 @@ import { ThemeProvider } from './ThemeContext';
 import { Router } from '../router';
 import { SettingsProvider } from './SettingsContext';
 import { ChatInputFocusProvider } from './ChatInputFocusContext';
+import { CommandPaletteProvider } from '../commandPalette/CommandPaletteProvider';
 import type { LoadedMessageDto } from '../types';
 
 interface AppProvidersProps {
@@ -52,8 +53,9 @@ function SessionLoader({ children }: { children: ReactNode }) {
  * 2. ApiProvider - ClaudeCodeApi initialization (depends on Bridge)
  * 3. SessionProvider - Session management (depends on Bridge)
  * 4. ChatStreamProvider - Chat state + Streaming + Diffs + Tools (depends on Bridge + Session)
- * 5. ThemeProvider - Theme management (independent)
- * 6. SessionLoader - Auto-load sessions when bridge connects
+ * 5. CommandPaletteProvider - 슬래시 커맨드 매니저 (depends on ChatStream + Session)
+ * 6. ThemeProvider - Theme management (independent)
+ * 7. SessionLoader - Auto-load sessions when bridge connects
  */
 export function AppProviders({ children }: AppProvidersProps) {
   return (
@@ -62,13 +64,15 @@ export function AppProviders({ children }: AppProvidersProps) {
         <ApiProvider>
           <SessionProvider>
             <ChatStreamProvider>
-              <SettingsProvider>
+              <CommandPaletteProvider>
+                <SettingsProvider>
                 <ThemeProvider>
                   <ChatInputFocusProvider>
                     <SessionLoader>{children}</SessionLoader>
                   </ChatInputFocusProvider>
                 </ThemeProvider>
-              </SettingsProvider>
+                </SettingsProvider>
+              </CommandPaletteProvider>
             </ChatStreamProvider>
           </SessionProvider>
         </ApiProvider>

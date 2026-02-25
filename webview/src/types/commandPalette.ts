@@ -3,19 +3,32 @@
 // ============================================
 
 // Icon Types
-export type IconType = 'terminal' | 'file' | 'settings' | 'link' | 'command';
+export enum IconType {
+  Terminal = 'terminal',
+  File = 'file',
+  Settings = 'settings',
+  Link = 'link',
+  Command = 'command',
+}
 
 // Panel Section Types
-export type PanelSectionId =
-  | 'context'
-  | 'model'
-  | 'customize'
-  | 'slashCommands'
-  | 'settings'
-  | 'support';
+export enum PanelSectionId {
+  Context = 'context',
+  Model = 'model',
+  Customize = 'customize',
+  SlashCommands = 'slashCommands',
+  Settings = 'settings',
+  Support = 'support',
+}
 
 // Panel Item Types
-export type PanelItemType = 'action' | 'toggle' | 'link' | 'command' | 'info';
+export enum PanelItemType {
+  Action = 'action',
+  Toggle = 'toggle',
+  Link = 'link',
+  Command = 'command',
+  Info = 'info',
+}
 
 export interface PanelItemBase {
   id: string;
@@ -34,30 +47,30 @@ export interface PanelItemBase {
 }
 
 export interface ActionItem extends PanelItemBase {
-  type: 'action';
-  action: () => void;
+  type: PanelItemType.Action;
+  action: () => void | Promise<void>;
 }
 
 export interface ToggleItem extends PanelItemBase {
-  type: 'toggle';
+  type: PanelItemType.Toggle;
   toggled: boolean;
   onToggle: (value: boolean) => void;
 }
 
 export interface LinkItem extends PanelItemBase {
-  type: 'link';
+  type: PanelItemType.Link;
   href: string;
 }
 
 export interface CommandItem extends PanelItemBase {
-  type: 'command';
+  type: PanelItemType.Command;
   name: string;
   description: string;
-  action: () => void;
+  action: () => void | Promise<void>;
 }
 
 export interface InfoItem extends PanelItemBase {
-  type: 'info';
+  type: PanelItemType.Info;
 }
 
 export type PanelItem = ActionItem | ToggleItem | LinkItem | CommandItem | InfoItem;
@@ -73,7 +86,7 @@ export interface PanelSection {
 }
 
 // State Types
-export interface SlashCommandPanelState {
+export interface CommandPaletteState {
   isOpen: boolean;
   filterQuery: string;
   selectedSectionIndex: number;

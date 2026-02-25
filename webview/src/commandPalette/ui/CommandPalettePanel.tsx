@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { PanelSection, PanelItem, ToggleItem } from '../types/slashCommandPanel';
-import { ToggleSwitch } from './ToggleSwitch';
-import { TerminalIcon, LinkIcon } from './icons/PanelIcons';
+import { PanelSection, PanelItem, ToggleItem, PanelItemType, IconType } from '@/types/commandPalette';
+import { ToggleSwitch } from '@/components/ToggleSwitch';
+import { TerminalIcon, LinkIcon } from './icons/PaletteIcons';
 
-interface SlashCommandPanelProps {
+interface CommandPalettePanelProps {
   sections: PanelSection[];
   selectedSectionIndex: number;
   selectedItemIndex: number;
@@ -12,7 +12,7 @@ interface SlashCommandPanelProps {
   onClose: () => void;
 }
 
-export const SlashCommandPanel: React.FC<SlashCommandPanelProps> = ({
+export const CommandPalettePanel: React.FC<CommandPalettePanelProps> = ({
   sections,
   selectedSectionIndex,
   selectedItemIndex,
@@ -174,22 +174,21 @@ const PanelItemComponent = React.forwardRef<HTMLDivElement, {
       return;
     }
     onClick();
-    if (item.type === 'toggle') {
+    if (item.type === PanelItemType.Toggle) {
       const toggleItem = item as ToggleItem;
       toggleItem.onToggle(!toggleItem.toggled);
-    } else if (item.type === 'link') {
+    } else if (item.type === PanelItemType.Link) {
       window.open((item as any).href, '_blank');
-    } else if (item.type === 'info') {
+    } else if (item.type === PanelItemType.Info) {
       return;
     } else {
       onExecute();
     }
   };
 
-  const isClickable = item.type !== 'info' && !item.disabled;
+  const isClickable = item.type !== PanelItemType.Info && !item.disabled;
 
-  // Check if this item has a right-side terminal icon (for Customize section items)
-  const hasRightTerminalIcon = item.icon === 'terminal' && item.type === 'action';
+  const hasRightTerminalIcon = item.icon === IconType.Terminal && item.type === PanelItemType.Action;
 
   return (
     <div
@@ -211,14 +210,11 @@ const PanelItemComponent = React.forwardRef<HTMLDivElement, {
         backgroundColor: isSelected || isHovered
           ? 'var(--hover-bg, #ffffff)'
           : 'transparent',
-        // boxShadow: isSelected
-        //   ? 'inset 2px 0 0 var(--selected-border-color, #0078d4)'
-        //   : 'none',
         transition: 'background-color 0.1s ease',
         opacity: item.disabled ? 0.5 : 1,
       }}
     >
-      {/* Left side: label (no left icon) */}
+      {/* Left side: label */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
         <span
           style={{
@@ -238,7 +234,6 @@ const PanelItemComponent = React.forwardRef<HTMLDivElement, {
 
       {/* Right side: secondary label / toggle / icon */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-        {/* Secondary label (Model section: current model name) */}
         {item.secondaryLabel && (
           <span
             style={{
@@ -251,23 +246,20 @@ const PanelItemComponent = React.forwardRef<HTMLDivElement, {
           </span>
         )}
 
-        {/* Toggle switch */}
-        {item.type === 'toggle' && (
+        {item.type === PanelItemType.Toggle && (
           <ToggleSwitch
             checked={(item as ToggleItem).toggled}
             onChange={(value) => (item as ToggleItem).onToggle(value)}
           />
         )}
 
-        {/* Right terminal icon for Customize section items */}
         {hasRightTerminalIcon && (
           <TerminalIcon
             style={{ color: 'var(--secondary-text-color, #858585)', flexShrink: 0 }}
           />
         )}
 
-        {/* Link icon */}
-        {item.type === 'link' && (
+        {item.type === PanelItemType.Link && (
           <LinkIcon
             style={{ color: 'var(--secondary-text-color, #858585)', flexShrink: 0 }}
           />
