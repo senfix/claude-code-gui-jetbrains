@@ -4,6 +4,7 @@ import { SessionMetaDto } from '../dto';
 import { useBridgeContext } from './BridgeContext';
 import { useApi } from './ApiContext';
 import { getAdapter, onBridgeReady } from '../adapters';
+import { toTitle } from '../mappers/sessionTransformer';
 
 
 interface SessionContextValue {
@@ -24,6 +25,7 @@ interface SessionContextValue {
   switchSession: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   renameSession: (sessionId: string, title: string) => void;
+  addNewSession: (sessionId: string, firstPrompt: string) => void;
   setSessionState: (state: SessionState) => void;
   setWorkingDirectory: (dir: string | null) => void;
 }
@@ -128,6 +130,31 @@ export function SessionProvider({ children }: SessionProviderProps) {
     return unsubscribe;
   }, [subscribe]);
 
+  // Subscribe to SESSIONS_UPDATED for cross-tab session list sync
+  useEffect(() => {
+    const unsubscribe = subscribe('SESSIONS_UPDATED', (message) => {
+      const { action, session } = message.payload as { action: string; session: { sessionId: string } };
+      if (action === 'upsert' && session?.sessionId) {
+        setSessions(prev => {
+          const exists = prev.find(s => s.id === session.sessionId);
+          if (exists) {
+            return prev.map(s =>
+              s.id === session.sessionId
+                ? { ...s, updatedAt: new Date() }
+                : s
+            );
+          }
+          // 다른 탭에서 생성된 세션 — loadSessions로 전체 갱신
+          loadSessions();
+          return prev;
+        });
+      } else if (action === 'delete' && session?.sessionId) {
+        setSessions(prev => prev.filter(s => s.id !== session.sessionId));
+      }
+    });
+    return unsubscribe;
+  }, [subscribe, loadSessions]);
+
   const resetToNewSession = useCallback(() => {
     setCurrentSessionId(null);
     setSessionState('idle');
@@ -195,6 +222,19 @@ export function SessionProvider({ children }: SessionProviderProps) {
     // Note: CLI session titles cannot be modified from the plugin
   }, []);
 
+  const addNewSession = useCallback((sessionId: string, firstPrompt: string) => {
+    const now = new Date();
+    const newSession = Object.assign(new SessionMetaDto(), {
+      id: sessionId,
+      title: toTitle(firstPrompt),
+      createdAt: now,
+      updatedAt: now,
+      messageCount: 0,
+      isSidechain: false,
+    });
+    setSessions(prev => [newSession, ...prev]);
+  }, []);
+
   const currentSession = useMemo(() => {
     return sessions.find(s => s.id === currentSessionId) ?? null;
   }, [sessions, currentSessionId]);
@@ -214,6 +254,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     switchSession,
     deleteSession,
     renameSession,
+    addNewSession,
     setSessionState,
     setWorkingDirectory,
   };

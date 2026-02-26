@@ -91,6 +91,21 @@ class SessionBroadcastService : Disposable {
     }
 
     /**
+     * Broadcast a message to ALL registered targets across all sessions.
+     * Used for session-agnostic events like SESSIONS_UPDATED.
+     */
+    fun broadcastToAll(type: String, payload: Map<String, Any?>) {
+        val allTargets = subscribers.values.flatMap { it }.toSet()
+        for (target in allTargets) {
+            try {
+                target.sendBroadcastMessage(type, payload)
+            } catch (e: Exception) {
+                logger.warn("Failed to broadcast '$type' to target: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Get the number of subscribers for a session.
      */
     fun getSubscriberCount(sessionId: String): Int {

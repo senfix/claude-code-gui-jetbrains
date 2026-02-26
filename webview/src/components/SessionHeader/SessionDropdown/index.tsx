@@ -5,7 +5,7 @@ import { DropdownMenu } from './DropdownMenu';
 import { useSessionContext } from '@/contexts/SessionContext';
 
 export function SessionDropdown() {
-  const { sessions, currentSessionId, currentSession, switchSession, loadSessions } = useSessionContext();
+  const { sessions, currentSessionId, currentSession, switchSession } = useSessionContext();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -21,11 +21,10 @@ export function SessionDropdown() {
     };
 
     if (isOpen) {
-      loadSessions();
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isOpen, loadSessions]);
+  }, [isOpen]);
 
   // Filter sessions using regex
   const filteredSessions = useMemo(() => {

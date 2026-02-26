@@ -579,6 +579,11 @@ class WebViewBridge(
         val result = sessionService.deleteSession(sessionId)
 
         return if (result.isSuccess) {
+            // 세션 목록 갱신 알림 (모든 탭)
+            broadcastService.broadcastToAll("SESSIONS_UPDATED", mapOf(
+                "action" to "delete",
+                "session" to mapOf("sessionId" to sessionId)
+            ))
             buildJsonObject {
                 put("status", "ok")
             }
@@ -1027,6 +1032,14 @@ class WebViewBridge(
 
         // Clear permission state after completion
         isWaitingPermission = false
+
+        // 세션 목록 갱신 알림 (모든 탭)
+        broadcastService.broadcastToAll("SESSIONS_UPDATED", mapOf(
+            "action" to "upsert",
+            "session" to mapOf(
+                "sessionId" to (data.session_id ?: currentSessionId)
+            )
+        ))
     }
 
     /**

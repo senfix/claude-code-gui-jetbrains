@@ -8,6 +8,7 @@ export {
   generateSessionId,
   sendToClient,
   broadcastToSession,
+  broadcastToAll,
   subscribeToSession,
   unsubscribeFromSession,
   startClaudeProcess,

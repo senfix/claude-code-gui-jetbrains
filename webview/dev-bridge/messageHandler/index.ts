@@ -12,6 +12,7 @@ import { openSettingsHandler } from './openSettingsHandler';
 import { getSettingsHandler } from './getSettingsHandler';
 import { saveSettingsHandler } from './saveSettingsHandler';
 import { getUsageHandler } from './getUsageHandler';
+import { deleteSessionHandler } from './deleteSessionHandler';
 
 export {
   sendMessageHandler,
@@ -25,6 +26,7 @@ export {
   getSettingsHandler,
   saveSettingsHandler,
   getUsageHandler,
+  deleteSessionHandler,
 };
 
 export async function handleMessage(ws: WebSocket, data: Buffer) {
@@ -66,6 +68,9 @@ export async function handleMessage(ws: WebSocket, data: Buffer) {
         break;
       case 'GET_USAGE':
         await getUsageHandler(ws, message);
+        break;
+      case 'DELETE_SESSION':
+        await deleteSessionHandler(ws, message);
         break;
       default:
         log('Unknown message type:', message.type);

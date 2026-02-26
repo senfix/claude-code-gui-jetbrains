@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import type { WebSocket } from 'ws';
 import { sessionRegistry } from '../registries';
 import { broadcastToSession } from './broadcastToSession';
+import { broadcastToAll } from './broadcastToAll';
 import { subscribeToSession } from './subscribeToSession';
 import { log, error, yellow, blue, green, bold, label } from '../log';
 
@@ -265,6 +266,13 @@ function handleStreamEvent(targetSessionId: string, event: Record<string, unknow
               details: errorField.details,
             }
           : null,
+      });
+      // 세션 목록 갱신 알림 (모든 탭)
+      broadcastToAll('SESSIONS_UPDATED', {
+        action: 'upsert',
+        session: {
+          sessionId: event.session_id || targetSessionId,
+        },
       });
       break;
     }

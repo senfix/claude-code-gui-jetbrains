@@ -2,6 +2,7 @@ export * from './types';
 export * from './generateSessionId';
 export * from './sendToClient';
 export * from './broadcastToSession';
+export * from './broadcastToAll';
 export * from './subscribeToSession';
 export * from './startClaudeProcess';
 export * from './extractSessionInfo';
