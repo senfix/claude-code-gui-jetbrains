@@ -25,6 +25,13 @@ webview/dist/
 # WebView build output
 src/main/resources/webview/
 
+# TypeScript build info
+*.tsbuildinfo
+
+# Vite config build artifacts
+webview/vite.config.d.ts
+webview/vite.config.js
+
 # Claude Code / OMC
 .claude/
 .omc/
