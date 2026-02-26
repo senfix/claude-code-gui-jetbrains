@@ -64,7 +64,7 @@ export const StreamingExample: React.FC = () => {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} style={{ padding: '1rem', borderTop: '1px solid var(--ide-border)', display: 'flex', gap: '0.5rem' }}>
+      <form onSubmit={(e) => handleSubmit(e, 'ask_before_edit')} style={{ padding: '1rem', borderTop: '1px solid var(--ide-border)', display: 'flex', gap: '0.5rem' }}>
         <input
           type="text"
           value={input}

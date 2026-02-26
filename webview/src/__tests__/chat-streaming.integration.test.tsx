@@ -65,7 +65,7 @@ function TestChatComponent() {
         value={ctx.input}
         onChange={(e) => ctx.setInput(e.target.value)}
       />
-      <button data-testid="submit" onClick={() => ctx.handleSubmit()}>
+      <button data-testid="submit" onClick={() => ctx.handleSubmit(undefined, 'ask_before_edit')}>
         Send
       </button>
       <button data-testid="stop" onClick={ctx.stop}>
@@ -75,7 +75,7 @@ function TestChatComponent() {
         Continue
       </button>
       <button data-testid="submit-with-mode" onClick={() => {
-        ctx.sendMessage('Hello with mode', undefined, 'plan');
+        ctx.sendMessage('Hello with mode', 'plan', undefined);
       }}>
         Send with Mode
       </button>

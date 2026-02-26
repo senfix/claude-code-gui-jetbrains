@@ -2,7 +2,8 @@ import {
   PanelItemType,
   IconType,
 } from '@/types/commandPalette';
-import { SessionState } from '@/types';
+import { SessionState, Context } from '@/types';
+import { InputMode } from '@/types/chatInput';
 
 /**
  * Services injected by CommandPaletteRegistry into commands.
@@ -15,7 +16,7 @@ export interface CommandPaletteServices {
     isStopped: boolean;
     input: string;
     setInput: (input: string) => void;
-    sendMessage: (content: string) => void;
+    sendMessage: (content: string, inputMode: InputMode, context?: Context[]) => void;
     stop: () => void;
     continue: () => void;
     clearMessages: () => void;

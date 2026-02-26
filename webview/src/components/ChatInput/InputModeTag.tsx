@@ -1,5 +1,6 @@
 import { InputMode, INPUT_MODES } from '../../types/chatInput';
 import { PauseIcon, ForwardIcon, PencilIcon, ChevronDoubleRightIcon } from '@heroicons/react/16/solid';
+import {Tag} from "@/components/ChatInput/Tag.tsx";
 
 interface InputModeTagProps {
   mode: InputMode;
@@ -25,14 +26,9 @@ export function InputModeTag({ mode, onClick }: InputModeTagProps) {
   const config = INPUT_MODES[mode];
 
   return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-1.5 px-1.5 py-0.5 rounded text-xs font-medium text-zinc-400 transition-colors cursor-pointer hover:bg-zinc-800"
-      title={config.description}
-      onClick={onClick}
-    >
-      <ModeIcon mode={mode} />
-      <span>{config.label}</span>
-    </button>
+      <Tag title={config.description} onClick={onClick}>
+        <ModeIcon mode={mode} />
+        <span>{config.label}</span>
+      </Tag>
   );
 }

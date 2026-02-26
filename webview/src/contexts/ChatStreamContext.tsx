@@ -20,8 +20,8 @@ interface ChatStreamContextType {
   setInput: (input: string) => void;
 
   // Actions
-  sendMessage: (content: string, context?: Context[], inputMode?: InputMode) => void;
-  handleSubmit: (e?: React.FormEvent, inputMode?: InputMode) => void;
+  sendMessage: (content: string, inputMode: InputMode, context?: Context[]) => void;
+  handleSubmit: (e: React.FormEvent | undefined, inputMode: InputMode) => void;
   stop: () => void;
   continue: () => void;
   retry: (messageId: string) => void;
@@ -117,7 +117,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
 
   // sendMessage: add to local state + send to Kotlin + create session if needed
   const sendMessage = useCallback(
-    (content: string, context?: Context[], inputMode?: InputMode) => {
+    (content: string, inputMode: InputMode, context?: Context[]) => {
       // Resolve session ID: use existing or generate new one
       let sessionId = session.currentSessionId;
       const isNewSession = !sessionId;
@@ -137,7 +137,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
         content,
         context: context || [],
         workingDir: session.workingDirectory,
-        ...(inputMode ? { inputMode } : {}),
+        inputMode,
       }).then((response) => {
         if (response?.status === 'error') {
           console.error('[ChatStreamContext] Kotlin error:', response.error);
@@ -151,7 +151,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
 
   // handleSubmit: convenience wrapper for form submission
   const handleSubmit = useCallback(
-    (e?: React.FormEvent, inputMode?: InputMode) => {
+    (e: React.FormEvent | undefined, inputMode: InputMode) => {
       if (e) {
         e.preventDefault();
       }
@@ -159,7 +159,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
       const trimmedInput = input.trim();
       if (!trimmedInput) return;
 
-      sendMessage(trimmedInput, undefined, inputMode);
+      sendMessage(trimmedInput, inputMode, undefined);
       setInput('');
     },
     [input, sendMessage]
