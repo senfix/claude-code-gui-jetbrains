@@ -40,7 +40,7 @@ intellijPlatform {
             url = "https://github.com/yhk1038"
         }
         ideaVersion {
-            sinceBuild = "253"
+            sinceBuild = "242"
             untilBuild = "253.*"
         }
         changeNotes = """

@@ -198,17 +198,6 @@ class ClaudeCodePanel(
             }
 
             override fun onContextMenuDismissed(browser: CefBrowser?, frame: CefFrame?) {}
-
-            override fun runContextMenu(
-                browser: CefBrowser?,
-                frame: CefFrame?,
-                params: CefContextMenuParams?,
-                model: CefMenuModel?,
-                callback: org.cef.callback.CefRunContextMenuCallback?
-            ): Boolean {
-                // Return false to allow default context menu behavior
-                return false
-            }
         }, browser.cefBrowser)
     }
 
