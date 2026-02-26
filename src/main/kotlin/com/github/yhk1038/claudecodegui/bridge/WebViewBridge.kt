@@ -210,6 +210,7 @@ class WebViewBridge(
                 "OPEN_FILE" -> handleOpenFile(payload)
                 "GET_SETTINGS" -> handleGetSettings()
                 "SAVE_SETTINGS" -> handleSaveSettings(payload)
+                "GET_USAGE" -> handleGetUsage()
                 else -> {
                     logger.warn("Unknown message type: $type")
                     buildJsonObject {
@@ -737,6 +738,85 @@ class WebViewBridge(
 
         } catch (e: Exception) {
             return errorResponse("Invalid value for key $key: ${e.message}")
+        }
+    }
+
+    /**
+     * Read Claude Code OAuth access token from system credentials
+     */
+    private fun readClaudeAccessToken(): String? {
+        return try {
+            val os = System.getProperty("os.name").lowercase()
+            if (os.contains("mac")) {
+                val process = ProcessBuilder(
+                    "security", "find-generic-password",
+                    "-s", "Claude Code-credentials", "-w"
+                ).redirectErrorStream(true).start()
+
+                val output = process.inputStream.bufferedReader().readText().trim()
+                val exitCode = process.waitFor()
+                if (exitCode != 0) return null
+
+                val parsed = json.parseToJsonElement(output).jsonObject
+                parsed["claudeAiOauth"]?.jsonObject?.get("accessToken")?.jsonPrimitive?.content
+            } else {
+                val credPath = java.io.File(System.getProperty("user.home"), ".claude/.credentials.json")
+                if (!credPath.exists()) return null
+
+                val parsed = json.parseToJsonElement(credPath.readText()).jsonObject
+                parsed["claudeAiOauth"]?.jsonObject?.get("accessToken")?.jsonPrimitive?.content
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to read Claude access token", e)
+            null
+        }
+    }
+
+    /**
+     * Handle GET_USAGE - Fetch usage data from Anthropic OAuth API
+     */
+    private suspend fun handleGetUsage(): JsonObject {
+        return withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val accessToken = readClaudeAccessToken()
+                if (accessToken == null) {
+                    return@withContext buildJsonObject {
+                        put("status", "error")
+                        put("error", "Claude Code credentials not found. Please log in with Claude Code CLI first.")
+                    }
+                }
+
+                val url = java.net.URL("https://api.anthropic.com/api/oauth/usage")
+                val connection = url.openConnection() as java.net.HttpURLConnection
+                connection.requestMethod = "GET"
+                connection.setRequestProperty("Authorization", "Bearer $accessToken")
+                connection.setRequestProperty("anthropic-beta", "oauth-2025-04-20")
+                connection.connectTimeout = 10000
+                connection.readTimeout = 10000
+
+                val responseCode = connection.responseCode
+                if (responseCode != 200) {
+                    val errorBody = connection.errorStream?.bufferedReader()?.readText() ?: ""
+                    return@withContext buildJsonObject {
+                        put("status", "error")
+                        put("error", "API returned $responseCode: $errorBody")
+                    }
+                }
+
+                val responseBody = connection.inputStream.bufferedReader().readText()
+                val usage = json.parseToJsonElement(responseBody)
+
+                buildJsonObject {
+                    put("status", "ok")
+                    put("usage", usage)
+                }
+            } catch (e: Exception) {
+                logger.error("Failed to fetch usage data", e)
+                buildJsonObject {
+                    put("status", "error")
+                    put("error", e.message ?: "Unknown error")
+                }
+            }
         }
     }
 

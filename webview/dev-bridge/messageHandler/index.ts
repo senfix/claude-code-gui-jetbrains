@@ -11,6 +11,7 @@ import { openFileHandler } from './openFileHandler';
 import { openSettingsHandler } from './openSettingsHandler';
 import { getSettingsHandler } from './getSettingsHandler';
 import { saveSettingsHandler } from './saveSettingsHandler';
+import { getUsageHandler } from './getUsageHandler';
 
 export {
   sendMessageHandler,
@@ -23,6 +24,7 @@ export {
   openSettingsHandler,
   getSettingsHandler,
   saveSettingsHandler,
+  getUsageHandler,
 };
 
 export async function handleMessage(ws: WebSocket, data: Buffer) {
@@ -61,6 +63,9 @@ export async function handleMessage(ws: WebSocket, data: Buffer) {
         break;
       case 'SAVE_SETTINGS':
         await saveSettingsHandler(ws, message);
+        break;
+      case 'GET_USAGE':
+        await getUsageHandler(ws, message);
         break;
       default:
         log('Unknown message type:', message.type);

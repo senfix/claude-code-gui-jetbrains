@@ -5,6 +5,7 @@ import {
   CommandLineIcon,
   AdjustmentsHorizontalIcon,
   InformationCircleIcon,
+  ChartBarSquareIcon,
   ArrowLeftIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
@@ -19,6 +20,7 @@ export enum IconName {
   SHIELD_CHECK = 'ShieldCheckIcon',
   COMMAND_LINE = 'CommandLineIcon',
   ADJUSTMENTS = 'AdjustmentsHorizontalIcon',
+  CHART_BAR_SQUARE = 'ChartBarSquareIcon',
   INFORMATION_CIRCLE = 'InformationCircleIcon',
   ARROW_LEFT = 'ArrowLeftIcon',
 }
@@ -35,6 +37,7 @@ export enum Route {
   SETTINGS_PERMISSIONS = 'settings/permissions',
   SETTINGS_CLI = 'settings/cli',
   SETTINGS_ADVANCED = 'settings/advanced',
+  SETTINGS_USAGE = 'settings/usage',
   SETTINGS_ABOUT = 'settings/about',
 }
 
@@ -89,6 +92,12 @@ export const ROUTE_META: Record<Route, RouteMeta> = {
     icon: IconName.ADJUSTMENTS,
     description: 'Debug and advanced options'
   },
+  [Route.SETTINGS_USAGE]: {
+    path: '/settings/usage',
+    label: 'Usage',
+    icon: IconName.CHART_BAR_SQUARE,
+    description: 'Plan usage limits and quota'
+  },
   [Route.SETTINGS_ABOUT]: {
     path: '/settings/about',
     label: 'About',
@@ -106,6 +115,7 @@ export const ICON_COMPONENTS: Record<IconName, ComponentType<SVGProps<SVGSVGElem
   [IconName.SHIELD_CHECK]: ShieldCheckIcon,
   [IconName.COMMAND_LINE]: CommandLineIcon,
   [IconName.ADJUSTMENTS]: AdjustmentsHorizontalIcon,
+  [IconName.CHART_BAR_SQUARE]: ChartBarSquareIcon,
   [IconName.INFORMATION_CIRCLE]: InformationCircleIcon,
   [IconName.ARROW_LEFT]: ArrowLeftIcon,
 };
@@ -149,6 +159,7 @@ export const SETTINGS_SUB_ROUTES: Route[] = [
   Route.SETTINGS_PERMISSIONS,
   Route.SETTINGS_CLI,
   Route.SETTINGS_ADVANCED,
+  Route.SETTINGS_USAGE,
   Route.SETTINGS_ABOUT,
 ];
 
