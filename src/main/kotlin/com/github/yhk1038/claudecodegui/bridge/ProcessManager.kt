@@ -49,7 +49,7 @@ class ProcessManager(
      * Start the Claude CLI process
      * @param sessionId Optional session ID to use for this conversation
      */
-    suspend fun start(sessionId: String? = null, workingDir: String? = null, permissionMode: PermissionMode? = null) = withContext(Dispatchers.IO) {
+    suspend fun start(sessionId: String? = null, workingDir: String? = null, permissionMode: PermissionMode) = withContext(Dispatchers.IO) {
         if (isRunning) {
             logger.warn("Process already running")
             return@withContext
@@ -70,10 +70,8 @@ class ProcessManager(
                 addParameter("--include-partial-messages")
 
                 // Permission mode flag
-                if (permissionMode != null) {
-                    addParameter("--permission-mode")
-                    addParameter(permissionMode.cliFlag)
-                }
+                addParameter("--permission-mode")
+                addParameter(permissionMode.cliFlag)
 
                 // Set session ID if provided (WebView-generated)
                 if (sessionId != null) {
@@ -90,6 +88,8 @@ class ProcessManager(
                 // Ensure UTF-8 encoding
                 withCharset(Charsets.UTF_8)
             }
+
+            logger.info("\u001B[33m$ ${commandLine.commandLineString}\u001B[0m")
 
             processHandler = OSProcessHandler(commandLine).apply {
                 addProcessListener(object : ProcessListener {
@@ -207,11 +207,11 @@ class ProcessManager(
     /**
      * Restart the process
      */
-    suspend fun restart() {
+    suspend fun restart(sessionId: String? = null, workingDir: String? = null, permissionMode: PermissionMode) {
         logger.info("Restarting Claude CLI process...")
         stop()
         delay(1000) // Wait a bit before restart
-        start()
+        start(sessionId, workingDir, permissionMode)
     }
 
     /**
