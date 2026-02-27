@@ -26,6 +26,7 @@ import org.cef.browser.CefBrowser
 import org.cef.browser.CefFrame
 import org.cef.callback.CefContextMenuParams
 import org.cef.callback.CefMenuModel
+import org.cef.callback.CefRunContextMenuCallback
 import org.cef.handler.CefContextMenuHandler
 import org.cef.handler.CefDisplayHandler
 import org.cef.handler.CefDisplayHandlerAdapter
@@ -198,6 +199,16 @@ class ClaudeCodePanel(
             }
 
             override fun onContextMenuDismissed(browser: CefBrowser?, frame: CefFrame?) {}
+
+            override fun runContextMenu(
+                browser: CefBrowser?,
+                frame: CefFrame?,
+                params: CefContextMenuParams?,
+                model: CefMenuModel?,
+                callback: CefRunContextMenuCallback?
+            ): Boolean {
+                return false
+            }
         }, browser.cefBrowser)
     }
 

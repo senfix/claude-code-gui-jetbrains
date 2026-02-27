@@ -791,7 +791,7 @@ class WebViewBridge(
                     }
                 }
 
-                val url = java.net.URL("https://api.anthropic.com/api/oauth/usage")
+                val url = java.net.URI("https://api.anthropic.com/api/oauth/usage").toURL()
                 val connection = url.openConnection() as java.net.HttpURLConnection
                 connection.requestMethod = "GET"
                 connection.setRequestProperty("Authorization", "Bearer $accessToken")
