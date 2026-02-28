@@ -36,6 +36,10 @@ interface ChatStreamContextType {
   // Subsystems (preserved)
   tools: ReturnType<typeof useTools>;
   diffs: ReturnType<typeof useDiffs>;
+
+  // Thinking block global expand/collapse state
+  isThinkingExpanded: boolean;
+  toggleThinkingExpanded: () => void;
 }
 
 const ChatStreamContext = createContext<ChatStreamContextType | undefined>(undefined);
@@ -59,6 +63,8 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
   const diffs = useDiffs();
 
   const [input, setInput] = useState('');
+  const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
+  const toggleThinkingExpanded = useCallback(() => setIsThinkingExpanded(prev => !prev), []);
 
   // Initialize useChatStream with bridge and callbacks
   const chatStream = useChatStream({
@@ -231,6 +237,10 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
     // Subsystems
     tools,
     diffs,
+
+    // Thinking block global expand/collapse state
+    isThinkingExpanded,
+    toggleThinkingExpanded,
   };
 
   return (

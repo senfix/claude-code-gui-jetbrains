@@ -3,6 +3,7 @@ import {Streamdown} from 'streamdown';
 import {isInsideCodeBlock, isMarkdownComplete} from '../utils/markdownParser';
 import './streaming.css';
 import {ToolWrapper} from "@/components/message-renderers/ToolRenderers/common";
+import {useChatStreamContext} from '../contexts/ChatStreamContext';
 
 interface ThinkingStreamingMessageProps {
     thinking: string;
@@ -43,7 +44,7 @@ export const ThinkingStreamingMessage: React.FC<ThinkingStreamingMessageProps> =
     message,
 }) => {
     const [shouldAnimate, setShouldAnimate] = useState(isStreaming);
-    const [isExpended, setIsExpended] = useState(false);
+    const { isThinkingExpanded, toggleThinkingExpanded } = useChatStreamContext();
 
     // Handle streaming animation
     useEffect(() => {
@@ -63,16 +64,16 @@ export const ThinkingStreamingMessage: React.FC<ThinkingStreamingMessageProps> =
         <ToolWrapper message={message} className="mt-0">
             <div className={`text-white/40 streaming-message ${className}`} onClick={() => console.log(thinking)}>
                 <div>
-                    <div className="mb-0.5 cursor-pointer" onClick={() => setIsExpended(!isExpended)}>
+                    <div className="mb-0.5 cursor-pointer" onClick={toggleThinkingExpanded}>
                         <div className="italic text-white/50 flex items-center gap-1">
                             Thinking{isStreaming ? '...' : ''}
                             <span
-                                className={`inline-block transition-transform duration-200 text-[0.7em] ${isExpended ? 'rotate-180' : ''}`}>▼</span>
+                                className={`inline-block transition-transform duration-200 text-[0.7em] ${isThinkingExpanded ? 'rotate-180' : ''}`}>▼</span>
                         </div>
                     </div>
 
                     <div
-                        className={`${isExpended ? "" : "hidden"} thinking-message markdown-content ${shouldAnimate ? 'streaming-animate' : ''}`}>
+                        className={`${isThinkingExpanded ? "" : "hidden"} thinking-message markdown-content ${shouldAnimate ? 'streaming-animate' : ''}`}>
                         <Streamdown
                             className="space-y-0"
                             mode={isStreaming ? 'streaming' : 'static'}
