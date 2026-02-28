@@ -53,7 +53,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin w-6 h-6 border-2 border-zinc-500 border-t-zinc-300 rounded-full mx-auto mb-3" />
-          <p className="text-zinc-500 text-sm">프로젝트 목록을 불러오는 중...</p>
+          <p className="text-zinc-500 text-sm">Loading projects...</p>
         </div>
       </div>
     );
@@ -68,7 +68,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
             onClick={() => window.location.reload()}
             className="text-zinc-400 text-xs hover:text-zinc-200 underline"
           >
-            다시 시도
+            Retry
           </button>
         </div>
       </div>
@@ -84,9 +84,9 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
             </svg>
           </div>
-          <p className="text-zinc-400 text-sm mb-1">사용 가능한 프로젝트가 없습니다</p>
+          <p className="text-zinc-400 text-sm mb-1">No projects available</p>
           <p className="text-zinc-500 text-xs">
-            URL에 <code className="bg-zinc-800 px-1.5 py-0.5 rounded">?workingDir=/path/to/project</code>를 추가하여 시작하세요
+            Add <code className="bg-zinc-800 px-1.5 py-0.5 rounded">?workingDir=/path/to/project</code> to URL to get started
           </p>
         </div>
       </div>
@@ -103,8 +103,8 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
             </svg>
           </div>
-          <h2 className="text-zinc-200 text-lg font-medium mb-1">프로젝트 선택</h2>
-          <p className="text-zinc-500 text-sm">작업할 프로젝트를 선택하세요</p>
+          <h2 className="text-zinc-200 text-lg font-medium mb-1">Select Project</h2>
+          <p className="text-zinc-500 text-sm">Choose a project to work on</p>
         </div>
 
         {/* Project List */}
@@ -137,7 +137,7 @@ export function ProjectSelector({ onSelectProject }: ProjectSelectorProps) {
 
         {/* Footer hint */}
         <p className="text-center text-zinc-600 text-xs mt-4">
-          또는 URL에 ?workingDir=/path 파라미터를 추가하세요
+          Or add ?workingDir=/path parameter to URL
         </p>
       </div>
     </div>

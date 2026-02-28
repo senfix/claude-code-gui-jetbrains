@@ -226,7 +226,7 @@ export const MessageList: React.FC<MessageListProps> = ({
       {messageGroups.length === 0 ? (
         <div className="empty-state">
           <div className="empty-icon">💬</div>
-          <div className="empty-text">대화를 시작해보세요</div>
+          <div className="empty-text">Start a conversation</div>
         </div>
       ) : (
         <>
@@ -534,11 +534,11 @@ function formatDate(timestamp: number): string {
   yesterday.setDate(yesterday.getDate() - 1);
 
   if (isSameDay(date, today)) {
-    return '오늘';
+    return 'Today';
   } else if (isSameDay(date, yesterday)) {
-    return '어제';
+    return 'Yesterday';
   } else {
-    return date.toLocaleDateString('ko-KR', {
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',

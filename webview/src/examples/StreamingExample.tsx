@@ -69,12 +69,12 @@ export const StreamingExample: React.FC = () => {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="메시지를 입력하세요..."
+          placeholder="Type a message..."
           disabled={isStreaming}
           style={{ flex: 1, padding: '0.75rem' }}
         />
         <button type="submit" disabled={isStreaming || !input.trim()} style={{ padding: '0.75rem 1.5rem' }}>
-          {isStreaming ? '전송 중...' : '전송'}
+          {isStreaming ? 'Sending...' : 'Send'}
         </button>
       </form>
 

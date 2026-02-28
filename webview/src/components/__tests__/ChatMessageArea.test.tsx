@@ -67,7 +67,7 @@ describe('ChatMessageArea', () => {
 
     render(<ChatMessageArea />);
 
-    expect(screen.getByText('워킹 디렉토리를 불러오는 중...')).toBeInTheDocument();
+    expect(screen.getByText('Loading working directory...')).toBeInTheDocument();
     expect(screen.queryByTestId('project-selector')).not.toBeInTheDocument();
   });
 
@@ -76,7 +76,7 @@ describe('ChatMessageArea', () => {
 
     render(<ChatMessageArea />);
 
-    expect(screen.getByText('메시지를 입력하세요')).toBeInTheDocument();
+    expect(screen.getByText('Type a message')).toBeInTheDocument();
   });
 
   it('renders user message correctly', () => {

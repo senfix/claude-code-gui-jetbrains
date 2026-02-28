@@ -9,8 +9,6 @@ const SETTINGS_FILE = join(homedir(), '.claude-code-gui', 'settings.js');
 
 const DEFAULT_SETTINGS: Record<string, unknown> = {
   cliPath: null,
-  permissionMode: 'ALWAYS_ASK',
-  autoApplyLowRisk: false,
   theme: 'system',
   fontSize: 13,
   debugMode: false,
@@ -20,8 +18,6 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
 
 const COMMENT_MAP: Record<string, string> = {
   cliPath: 'Claude CLI 실행 파일 경로 (null이면 자동 감지)',
-  permissionMode: '권한 모드: "ALWAYS_ASK" | "AUTO_APPROVE_SAFE" | "AUTO_APPROVE_ALL"',
-  autoApplyLowRisk: '저위험 변경사항 자동 적용 여부',
   theme: '테마: "system" | "light" | "dark"',
   fontSize: '글꼴 크기 (8~32)',
   debugMode: '디버그 모드 활성화',
@@ -91,11 +87,6 @@ function validateSetting(key: string, value: unknown): string | null {
     return `Unknown settings key: ${key}`;
   }
   switch (key) {
-    case 'permissionMode':
-      if (!['ALWAYS_ASK', 'AUTO_APPROVE_SAFE', 'AUTO_APPROVE_ALL'].includes(value as string)) {
-        return 'permissionMode must be one of "ALWAYS_ASK", "AUTO_APPROVE_SAFE", "AUTO_APPROVE_ALL"';
-      }
-      break;
     case 'theme':
       if (!['system', 'light', 'dark'].includes(value as string)) {
         return 'theme must be one of "system", "light", "dark"';
@@ -108,7 +99,6 @@ function validateSetting(key: string, value: unknown): string | null {
       }
       break;
     }
-    case 'autoApplyLowRisk':
     case 'debugMode':
       if (typeof value !== 'boolean') {
         return `${key} must be a boolean`;

@@ -38,7 +38,7 @@ export const PanelItemComponent = React.forwardRef<HTMLDivElement, {
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      title={item.disabled && isHovered ? '구현 예정' : undefined}
+      title={item.disabled && isHovered ? 'Coming soon' : undefined}
       style={{
         height: 'var(--item-height, 28px)',
         paddingLeft: '8px',

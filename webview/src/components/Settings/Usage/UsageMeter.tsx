@@ -9,7 +9,7 @@ function formatTimeUntil(isoString: string): string {
   const now = new Date();
   const diffMs = target.getTime() - now.getTime();
 
-  if (diffMs <= 0) return '곧 재설정';
+  if (diffMs <= 0) return 'Resets soon';
 
   const diffMinutes = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMinutes / 60);
@@ -18,27 +18,27 @@ function formatTimeUntil(isoString: string): string {
 
   if (diffDays > 0) {
     // For weekly limits, show day-of-week and time format
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayName = days[target.getDay()];
     const hours = target.getHours();
     const minutes = target.getMinutes();
-    const period = hours >= 12 ? '오후' : '오전';
+    const period = hours >= 12 ? 'PM' : 'AM';
     const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
     const displayMinutes = minutes > 0 ? `:${String(minutes).padStart(2, '0')}` : ':00';
-    return `(${dayName}) ${period} ${displayHours}${displayMinutes}에 재설정`;
+    return `Resets ${dayName} ${period} ${displayHours}${displayMinutes}`;
   }
 
   if (diffHours > 0) {
-    return `${diffHours}시간 ${remainingMinutes}분 후 재설정`;
+    return `Resets in ${diffHours}h ${remainingMinutes}m`;
   }
 
-  return `${remainingMinutes}분 후 재설정`;
+  return `Resets in ${remainingMinutes}m`;
 }
 
 function formatExactTime(isoString: string): string {
   const target = new Date(isoString);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const formatted = target.toLocaleString('ko-KR', {
+  const formatted = target.toLocaleString('en-US', {
     timeZone,
     year: 'numeric',
     month: '2-digit',

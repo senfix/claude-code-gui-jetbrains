@@ -10,13 +10,13 @@ function formatRelativeTime(date: Date): string {
   const diffSeconds = Math.floor(diffMs / 1000);
   const diffMinutes = Math.floor(diffSeconds / 60);
 
-  if (diffMinutes < 1) return '방금 전';
-  if (diffMinutes === 1) return '1분 전';
-  if (diffMinutes < 60) return `${diffMinutes}분 전`;
+  if (diffMinutes < 1) return 'Just now';
+  if (diffMinutes === 1) return '1m ago';
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
 
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours === 1) return '1시간 전';
-  return `${diffHours}시간 전`;
+  if (diffHours === 1) return '1h ago';
+  return `${diffHours}h ago`;
 }
 
 function UsageSkeleton() {
@@ -115,7 +115,7 @@ export function UsageSettings() {
               rel="noopener noreferrer"
               className="text-sm text-blue-400 hover:text-blue-300 hover:underline"
             >
-              사용량 한도에 대해 자세히 알아보기
+              Learn more about usage limits
             </a>
           </div>
         </>
@@ -123,13 +123,13 @@ export function UsageSettings() {
 
       <div className="flex items-center gap-2 text-xs text-zinc-500">
         {lastUpdated && (
-          <span>마지막 업데이트: {formatRelativeTime(lastUpdated)}</span>
+          <span>Last updated: {formatRelativeTime(lastUpdated)}</span>
         )}
         <button
           onClick={refresh}
           disabled={isLoading}
           className="p-1 rounded hover:bg-zinc-800 transition-colors disabled:opacity-50"
-          title="새로고침"
+          title="Refresh"
         >
           <ArrowPathIcon className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
         </button>

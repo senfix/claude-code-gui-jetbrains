@@ -131,7 +131,7 @@ export function ChatMessageArea() {
     if (window.kotlinBridge) {
       return (
         <div className="h-full flex items-center justify-center">
-          <p className="text-zinc-500 text-sm">워킹 디렉토리를 불러오는 중...</p>
+          <p className="text-zinc-500 text-sm">Loading working directory...</p>
         </div>
       );
     }
@@ -147,7 +147,7 @@ export function ChatMessageArea() {
   if (isEmpty) {
     return (
       <div className="h-full flex items-center justify-center" onClick={log}>
-        <p className="text-zinc-500 text-sm">메시지를 입력하세요</p>
+        <p className="text-zinc-500 text-sm">Type a message</p>
       </div>
     );
   }

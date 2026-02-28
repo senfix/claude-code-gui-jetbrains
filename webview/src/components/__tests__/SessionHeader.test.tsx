@@ -180,7 +180,7 @@ describe('SessionHeader', () => {
     render(<SessionHeader />);
 
     // 새 탭 버튼 클릭
-    const newTabButton = screen.getByTitle('새 탭 열기');
+    const newTabButton = screen.getByTitle('Open New Tab');
     await user.click(newTabButton);
 
     // openNewTab 호출 확인
@@ -193,7 +193,7 @@ describe('SessionHeader', () => {
     render(<SessionHeader />);
 
     // 버튼이 활성화되어 있음 확인
-    const newTabButton = screen.getByTitle('새 탭 열기');
+    const newTabButton = screen.getByTitle('Open New Tab');
     expect(newTabButton).not.toBeDisabled();
   });
 

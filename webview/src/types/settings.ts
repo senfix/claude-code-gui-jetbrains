@@ -7,10 +7,6 @@ export enum SettingKey {
   // CLI
   CLI_PATH = 'cliPath',
 
-  // Permissions
-  PERMISSION_MODE = 'permissionMode',
-  AUTO_APPLY_LOW_RISK = 'autoApplyLowRisk',
-
   // Appearance
   THEME = 'theme',
   FONT_SIZE = 'fontSize',
@@ -21,15 +17,6 @@ export enum SettingKey {
 
   // Input
   INITIAL_INPUT_MODE = 'initialInputMode',
-}
-
-/**
- * 권한 모드 Enum
- */
-export enum PermissionMode {
-  ALWAYS_ASK = 'ALWAYS_ASK',
-  AUTO_APPROVE_SAFE = 'AUTO_APPROVE_SAFE',
-  AUTO_APPROVE_ALL = 'AUTO_APPROVE_ALL',
 }
 
 /**
@@ -56,8 +43,6 @@ export enum LogLevel {
  */
 export interface SettingsState {
   [SettingKey.CLI_PATH]: string | null;
-  [SettingKey.PERMISSION_MODE]: PermissionMode;
-  [SettingKey.AUTO_APPLY_LOW_RISK]: boolean;
   [SettingKey.THEME]: ThemeMode;
   [SettingKey.FONT_SIZE]: number;
   [SettingKey.DEBUG_MODE]: boolean;
@@ -70,8 +55,6 @@ export interface SettingsState {
  */
 export const DEFAULT_SETTINGS: SettingsState = {
   [SettingKey.CLI_PATH]: null,
-  [SettingKey.PERMISSION_MODE]: PermissionMode.ALWAYS_ASK,
-  [SettingKey.AUTO_APPLY_LOW_RISK]: false,
   [SettingKey.THEME]: ThemeMode.SYSTEM,
   [SettingKey.FONT_SIZE]: 13,
   [SettingKey.DEBUG_MODE]: false,
