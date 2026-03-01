@@ -52,9 +52,11 @@ export interface UseChatStreamReturn {
 }
 
 /**
- * Filter messages to only include those in the active conversation chain.
- * Traces parentUuid backwards from the last message to identify the active branch.
- * This handles conversation compaction where abandoned branches should not be displayed.
+ * Filter messages to only include those in active conversation chains.
+ * Finds all leaf messages and traces parentUuid backwards from each leaf.
+ * This preserves all conversation chains (including pre-compact history)
+ * while still filtering out abandoned side-branches.
+ * Summary entries (compact markers) and progress entries are always kept.
  */
 function filterActiveChain(messages: LoadedMessageDto[]): LoadedMessageDto[] {
   if (messages.length === 0) return messages;
@@ -65,24 +67,39 @@ function filterActiveChain(messages: LoadedMessageDto[]): LoadedMessageDto[] {
     if (msg.uuid) byUuid.set(msg.uuid, msg);
   }
 
-  // Trace from last message backwards through parentUuid
-  const activeUuids = new Set<string>();
-  let current: LoadedMessageDto | undefined = messages[messages.length - 1];
-  while (current) {
-    if (current.uuid) activeUuids.add(current.uuid);
-    const parentUuid = current.parentUuid;
-    if (parentUuid && byUuid.has(parentUuid)) {
-      current = byUuid.get(parentUuid);
-    } else {
-      break;
+  // Find all child→parent references to identify leaf messages
+  const hasChild = new Set<string>();
+  for (const msg of messages) {
+    if (msg.parentUuid && byUuid.has(msg.parentUuid)) {
+      hasChild.add(msg.parentUuid);
     }
   }
 
-  // Filter: keep only messages in the active chain
-  // Messages without uuid are excluded (they're not part of any chain)
-  // Progress entries are always kept — they link via parentToolUseID, not parentUuid
+  // Find leaf messages (no message references them as parent)
+  // For each leaf, trace back to root — collecting all active UUIDs
+  const activeUuids = new Set<string>();
+  for (const msg of messages) {
+    if (!msg.uuid) continue;
+    if (hasChild.has(msg.uuid)) continue; // not a leaf
+
+    // Trace from this leaf backwards
+    let current: LoadedMessageDto | undefined = msg;
+    while (current) {
+      if (current.uuid) activeUuids.add(current.uuid);
+      const parentUuid = current.parentUuid;
+      if (parentUuid && byUuid.has(parentUuid)) {
+        current = byUuid.get(parentUuid);
+      } else {
+        break;
+      }
+    }
+  }
+
+  // Filter: keep messages in any active chain
+  // progress and summary entries are always kept
   return messages.filter(msg => {
     if (msg.type === 'progress') return true;
+    if (msg.type === 'summary') return true;
     return msg.uuid ? activeUuids.has(msg.uuid) : false;
   });
 }
