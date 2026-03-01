@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.yhk1038"
-version = "0.6.0"
+version = "0.6.1"
 
 repositories {
     mavenCentral()
@@ -44,6 +44,11 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
+            <h3>0.6.1 - Compact Session History Preservation</h3>
+            <ul>
+                <li>Fix compacted sessions losing pre-compact message history on reload</li>
+                <li>Add compact summary card rendering at conversation boundaries</li>
+            </ul>
             <h3>0.6.0 - Streaming Stability &amp; Rich Tool Rendering</h3>
             <ul>
                 <li>Context window usage bar in status bar with /compact click integration</li>
