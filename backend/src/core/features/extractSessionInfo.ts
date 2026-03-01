@@ -70,8 +70,6 @@ export async function extractSessionInfo(file: string): Promise<SessionInfo> {
   let firstTimestamp: string | null = null;
   let messageCount = 0;
   let firstUserPrompt: string | null = null;
-  let hasSlug = false;
-  let hasFileHistorySnapshot = false;
   let skipSession = false;
 
   // Step 1: Collect all messages into Map
@@ -112,16 +110,6 @@ export async function extractSessionInfo(file: string): Promise<SessionInfo> {
         }
       }
 
-      // Check for slug field
-      if (!hasSlug && entry.slug) {
-        hasSlug = true;
-      }
-
-      // Check for file-history-snapshot type
-      if (!hasFileHistorySnapshot && type === 'file-history-snapshot') {
-        hasFileHistorySnapshot = true;
-      }
-
       // Add to messages Map (only relevant types)
       if (uuid && type && ['user', 'assistant', 'attachment', 'system', 'progress'].includes(type)) {
         const messageObj = entry.message as Record<string, unknown> | undefined;
@@ -154,17 +142,6 @@ export async function extractSessionInfo(file: string): Promise<SessionInfo> {
       createdAt: firstTimestamp || '',
       messageCount,
       isSidechain: true,
-    };
-  }
-
-  // Filter out sessions without BOTH slug AND file-history-snapshot (Cursor compatibility)
-  if (!hasSlug && !hasFileHistorySnapshot) {
-    return {
-      title: 'Incomplete Session',
-      lastTimestamp: null,
-      createdAt: firstTimestamp || '',
-      messageCount,
-      isSidechain: true, // Treat as sidechain to filter it out
     };
   }
 

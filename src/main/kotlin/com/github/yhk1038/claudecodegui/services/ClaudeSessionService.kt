@@ -379,8 +379,6 @@ class ClaudeSessionService(private val project: Project) {
         var firstTimestamp: String? = null
         var messageCount = 0
         var firstUserPrompt: String? = null
-        var hasSlug = false  // Track if session has slug field
-        var hasFileHistorySnapshot = false  // Track if session has file-history-snapshot
         var skipSession = false  // Early skip if first relevant message is sidechain
 
         // Step 1: Collect all messages into Map
@@ -419,16 +417,6 @@ class ClaudeSessionService(private val project: Project) {
                         }
                     }
 
-                    // Check for slug field
-                    if (!hasSlug && entry["slug"]?.jsonPrimitive?.contentOrNull != null) {
-                        hasSlug = true
-                    }
-
-                    // Check for file-history-snapshot type
-                    if (!hasFileHistorySnapshot && type == "file-history-snapshot") {
-                        hasFileHistorySnapshot = true
-                    }
-
                     // Add to messages Map (only relevant types)
                     if (uuid != null && type != null && type in listOf("user", "assistant", "attachment", "system", "progress")) {
                         val messageObj = entry["message"]?.jsonObject
@@ -459,18 +447,6 @@ class ClaudeSessionService(private val project: Project) {
                 createdAt = firstTimestamp ?: "",
                 messageCount = messageCount,
                 isSidechain = true
-            )
-        }
-
-        // Filter out sessions without BOTH slug AND file-history-snapshot (Cursor compatibility)
-        // Sessions with either slug OR file-history-snapshot should be shown
-        if (!hasSlug && !hasFileHistorySnapshot) {
-            return SessionInfo(
-                title = "Incomplete Session",
-                lastTimestamp = null,
-                createdAt = firstTimestamp ?: "",
-                messageCount = messageCount,
-                isSidechain = true  // Treat as sidechain to filter it out
             )
         }
 
