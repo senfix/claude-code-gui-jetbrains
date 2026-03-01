@@ -3,6 +3,7 @@ import {
   UserMessageRenderer,
   AssistantMessageRenderer,
   SystemMessageRenderer,
+  SummaryMessageRenderer,
 } from './message-renderers';
 
 interface MessageBubbleProps {
@@ -18,6 +19,8 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
       return <AssistantMessageRenderer message={message} onRetry={onRetry} />;
     case 'system':
       return <SystemMessageRenderer message={message} />;
+    case 'summary':
+      return <SummaryMessageRenderer message={message} />;
     default:
       return null;
   }

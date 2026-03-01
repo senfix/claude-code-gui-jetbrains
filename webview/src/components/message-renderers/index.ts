@@ -3,6 +3,7 @@ export { UserMessageRenderer } from './UserMessageRenderer';
 export { AssistantMessageRenderer } from './AssistantMessageRenderer';
 export { SystemMessageRenderer } from './SystemMessageRenderer';
 export { InterruptedMessageRenderer } from './InterruptedMessageRenderer';
+export { SummaryMessageRenderer } from './SummaryMessageRenderer';
 
 // Hooks
 export { useCopyToClipboard } from './hooks/useCopyToClipboard';

@@ -46,7 +46,7 @@ export class MessageDto {
  * which in turn triggers `@Transform` on `MessageDto.content`.
  */
 export class LoadedMessageDto {
-  type!: 'user' | 'assistant' | 'system' | 'result' | 'progress';
+  type!: 'user' | 'assistant' | 'system' | 'result' | 'progress' | 'summary';
   uuid?: string;
   timestamp?: string;
   parentUuid?: string | null;
@@ -79,6 +79,10 @@ export class LoadedMessageDto {
 
   // skill-expanded message linkage
   sourceToolUseID?: string;
+
+  // summary-specific (compact marker)
+  summary?: string;
+  leafUuid?: string;
 
   // metadata
   slug?: string;
