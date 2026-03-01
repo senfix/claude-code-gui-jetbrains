@@ -105,7 +105,7 @@ describe('useChatStream', () => {
 
       const assistantMsg = result.current.messages[1];
       expect(assistantMsg.type).toBe('assistant');
-      expect(assistantMsg.message?.content).toBe('');
+      expect(assistantMsg.message?.content).toEqual([]);
       expect(assistantMsg.isStreaming).toBe(true);
       expect(result.current.isStreaming).toBe(true);
       expect(result.current.streamingMessageId).toBe(assistantMsg.uuid);
@@ -195,7 +195,7 @@ describe('useChatStream', () => {
         flushRAF();
       });
 
-      expect(result.current.messages[0].message?.content).toBe('Hello world!');
+      expect(result.current.messages[0].message?.content).toEqual([{ type: 'text', text: 'Hello world!' }]);
     });
 
     it('isStreaming이 true로 전환된다', () => {
@@ -798,7 +798,7 @@ describe('useChatStream', () => {
 
       // After RAF flush, all deltas should be accumulated
       const assistantMsg = result.current.messages[0];
-      expect(assistantMsg.message?.content).toBe('ABC');
+      expect(assistantMsg.message?.content).toEqual([{ type: 'text', text: 'ABC' }]);
     });
   });
 });

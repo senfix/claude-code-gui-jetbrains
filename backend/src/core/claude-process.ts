@@ -9,6 +9,9 @@ const INPUT_MODE_TO_CLI_FLAG: Record<string, string> = {
   auto_edit: 'acceptEdits',
 };
 
+// result 이벤트 수신 여부 추적 (비정상 종료 시 에러 전파 판단용)
+const sessionsWithResult = new Set<string>();
+
 /**
  * 세션에 대한 claude -p 프로세스가 없으면 새로 spawn한다.
  * 이미 살아있는 프로세스가 있으면 아무 것도 하지 않는다.
@@ -20,9 +23,6 @@ export async function ensureClaudeProcess(
   targetSessionId: string,
   inputMode: string,
 ): Promise<void> {
-  // connectionId를 이 세션에 구독
-  connections.subscribe(connectionId, targetSessionId);
-
   const existingSession = connections.getSession(targetSessionId);
   if (existingSession?.process) {
     console.error(
@@ -68,6 +68,8 @@ export async function ensureClaudeProcess(
     },
   });
 
+  let stderrBuffer = '';
+
   // spawn 완료까지 대기 (sendMessageToProcess가 안전하게 stdin write 가능하도록)
   await new Promise<void>((resolve, reject) => {
     proc.on('spawn', () => {
@@ -76,7 +78,11 @@ export async function ensureClaudeProcess(
     });
     proc.on('error', (err) => {
       console.error('[node-backend]', 'Failed to start Claude CLI:', err);
-      connections.broadcastToSession(targetSessionId, 'SERVICE_ERROR', { error: err.message });
+      connections.broadcastToSession(targetSessionId, 'SERVICE_ERROR', {
+        type: 'SPAWN_ERROR',
+        reason: err.message,
+        error: err.message,
+      });
       connections.broadcastToSession(targetSessionId, 'STREAM_END');
 
       const session = connections.getSession(targetSessionId);
@@ -118,7 +124,9 @@ export async function ensureClaudeProcess(
   });
 
   proc.stderr?.on('data', (data: Buffer) => {
-    console.error('[node-backend]', `Claude CLI stderr: ${data.toString()}`);
+    const text = data.toString();
+    console.error('[node-backend]', `Claude CLI stderr: ${text}`);
+    stderrBuffer += text;
   });
 
   proc.on('close', (code) => {
@@ -135,6 +143,20 @@ export async function ensureClaudeProcess(
       }
       connections.setBuffer(targetSessionId, '');
     }
+
+    // 비정상 종료 + result 미수신 → 에러 전파
+    if (code !== 0 && !sessionsWithResult.has(targetSessionId)) {
+      const errorMessage = stderrBuffer.trim() || `Claude CLI exited with code ${code}`;
+      connections.broadcastToSession(targetSessionId, 'SERVICE_ERROR', {
+        type: 'CLI_EXIT_ERROR',
+        reason: errorMessage,
+        error: errorMessage,
+        exitCode: code,
+      });
+    }
+
+    // 추적 정리
+    sessionsWithResult.delete(targetSessionId);
 
     connections.broadcastToSession(targetSessionId, 'STREAM_END');
 
@@ -271,6 +293,7 @@ function handleStreamEvent(
     }
 
     case 'result': {
+      sessionsWithResult.add(targetSessionId);
       const errorField = event.error as Record<string, unknown> | undefined;
       connections.broadcastToSession(targetSessionId, 'RESULT_MESSAGE', {
         status: event.subtype ?? event.status ?? 'unknown',

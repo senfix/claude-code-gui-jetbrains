@@ -111,13 +111,18 @@ export class ConnectionManager {
   // ─── Subscription (Pub/Sub) ─────────────────────────────────────────────────
 
   subscribe(connectionId: string, sessionId: string): void {
-    // Unsubscribe from any existing session first
+    const client = this.clientMap.get(connectionId);
+    // Already subscribed to the same session — no-op
+    if (client?.subscribedSessionId === sessionId) {
+      return;
+    }
+
+    // Unsubscribe from any DIFFERENT session first
     this.unsubscribe(connectionId);
 
     const session = this.getOrCreateSession(sessionId);
     session.subscribers.add(connectionId);
 
-    const client = this.clientMap.get(connectionId);
     if (client) {
       client.subscribedSessionId = sessionId;
     }

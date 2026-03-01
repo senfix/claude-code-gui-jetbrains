@@ -82,7 +82,14 @@ function TestChatComponent() {
       <div data-testid="messages">
         {ctx.messages.map((m) => (
           <div key={m.uuid} data-testid={`msg-${m.type}`}>
-            {typeof m.message?.content === 'string' ? m.message.content : 'blocks'}
+            {typeof m.message?.content === 'string'
+              ? m.message.content
+              : Array.isArray(m.message?.content)
+                ? (m.message!.content as Array<{type: string; text?: string}>)
+                    .filter((b) => b.type === 'text')
+                    .map((b) => b.text ?? '')
+                    .join('')
+                : ''}
           </div>
         ))}
       </div>
