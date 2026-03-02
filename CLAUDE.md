@@ -105,6 +105,7 @@ Idle → Streaming → Waiting Permission → Has Diff → Error
 | `wv-install` | 의존성 설치 | ~~cd webview && pnpm install~~ |
 | `full-build` | 전체 빌드 | ~~wv-build && build~~ |
 | `dist` | 배포 빌드 | ~~wv-build && build-plugin~~ |
+| `clear-cache` | 빌드 캐시/결과물 초기화 | ~~rm -rf build webview/dist backend/dist ...~~ |
 | `ide-log` | IDE 로그 확인 | ~~tail -f build/idea-sandbox/...~~ |
 
 ### 에이전트 행동 지침
@@ -112,6 +113,12 @@ Idle → Streaming → Waiting Permission → Has Diff → Error
 1. **빌드/테스트 시**: 반드시 위 alias 사용
 2. **새 명령 필요 시**: 직접 실행하지 말고 `.envrc`에 추가 제안
 3. **경로 하드코딩 금지**: alias에 이미 경로가 포함되어 있음
+
+## 스킬 트리거
+
+| 키워드 | 호출 스킬 | 비고 |
+|--------|-----------|------|
+| "배포", "deploy", "릴리즈", "release", "publish", "마켓플레이스 발행" | `/release` (직접 정의 스킬) | oh-my-claudecode:release 가 아닌 프로젝트 로컬 스킬 |
 
 ## 작업 플랜
 
