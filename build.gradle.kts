@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.github.yhk1038"
-version = "0.6.3"
+version = "0.6.4"
 
 repositories {
     mavenCentral()
@@ -44,6 +44,12 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
+            <h3>0.6.4 - Fixed Port</h3>
+            <ul>
+                <li>Use fixed default port 19836 for Node.js backend (dev and prod unified)</li>
+                <li>Auto-retry on port conflict with graceful fallback</li>
+                <li>Add Vite WebSocket proxy for browser dev environment</li>
+            </ul>
             <h3>0.6.3 - Build Pipeline Fix</h3>
             <ul>
                 <li>Fix stale WebView bundle causing command palette items to be non-functional</li>

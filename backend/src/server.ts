@@ -12,7 +12,7 @@ import { handleMessage } from './core/handlers/index';
  * - stderr는 로그 출력
  *
  * Browser (standalone) 모드: 기본값
- * - PORT 환경변수 또는 고정 포트(3001)로 실행
+ * - 고정 포트(19836) 사용 (PORT 환경변수로 오버라이드 가능)
  * - BrowserBridge 사용 (Vite dev server가 정적 파일 제공)
  *
  * 안전한 stdout 사용 순서:
@@ -24,7 +24,11 @@ import { handleMessage } from './core/handlers/index';
  */
 
 const isJetBrainsMode = process.env.JETBRAINS_MODE === 'true';
-const requestedPort = isJetBrainsMode ? 0 : parseInt(process.env.PORT ?? '3001', 10);
+
+// JetBrains, 브라우저 모두 동일한 고정 포트 사용
+// PORT 환경변수로 오버라이드 가능
+const DEFAULT_PORT = 19836;
+const requestedPort = parseInt(process.env.PORT ?? String(DEFAULT_PORT), 10);
 
 // JetBrains 모드: Node.js가 WebView 정적 파일도 제공
 // Kotlin이 WEBVIEW_DIR 환경변수를 통해 추출된 WebView 파일 경로를 전달
