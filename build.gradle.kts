@@ -44,6 +44,12 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
+            <h3>0.6.5 - Session Refresh &amp; Tab Routing Fix</h3>
+            <ul>
+                <li>Add manual refresh button to session dropdown for on-demand session list reload</li>
+                <li>Fix new tab and settings opening as separate windows instead of editor tabs in JCEF</li>
+                <li>Build-time version synchronization across webview and backend artifacts with cache validation</li>
+            </ul>
             <h3>0.6.4 - Fixed Port</h3>
             <ul>
                 <li>Use fixed default port 19836 for Node.js backend (dev and prod unified)</li>
