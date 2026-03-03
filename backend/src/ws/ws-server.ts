@@ -38,8 +38,9 @@ async function serveStaticFile(
   urlPath: string,
   res: ServerResponse,
 ): Promise<void> {
-  // Default to index.html for root and unknown paths (SPA)
-  const normalized = urlPath === '/' || !urlPath ? 'index.html' : urlPath.replace(/^\//, '');
+  // Strip querystring and hash before resolving the file path
+  const cleanUrl = (urlPath ?? '/').split('?')[0].split('#')[0];
+  const normalized = cleanUrl === '/' || !cleanUrl ? 'index.html' : cleanUrl.replace(/^\//, '');
   const filePath = join(webviewDir, normalized);
 
   try {
@@ -49,7 +50,15 @@ async function serveStaticFile(
     res.writeHead(200, { 'Content-Type': contentType });
     res.end(data);
   } catch {
-    // Fall back to index.html for SPA routing
+    // Only fall back to index.html for SPA navigation routes (no file extension)
+    const ext = extname(normalized).toLowerCase();
+    if (ext && ext !== '.html') {
+      // Static asset not found → 404 (never serve index.html as JS/CSS)
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    // SPA route fallback
     try {
       const indexData = await readFile(join(webviewDir, 'index.html'));
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
