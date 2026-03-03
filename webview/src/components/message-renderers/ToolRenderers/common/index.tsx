@@ -10,7 +10,7 @@ export const ToolWrapper = (props: {
     onClick?: () => any;
     groupClassName?: string;
     className?: string;
-    children: ReactNode;
+    children?: ReactNode;
 }) => {
     const {message, groupClassName = '', className = '', onClick, children} = props;
 

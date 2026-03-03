@@ -82,12 +82,6 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
                         <span className="cursor-blink">▋</span>
                     </div>
                 )}
-
-                {isStreaming && (
-                    <div className="streaming-indicator">
-                        <span className="dot-pulse"/>
-                    </div>
-                )}
             </div>
         </ToolWrapper>
     );

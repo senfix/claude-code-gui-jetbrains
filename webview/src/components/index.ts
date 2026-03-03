@@ -3,7 +3,6 @@ export { ChatInput } from './ChatInput';
 export { MessageBubble } from './MessageBubble';
 export { ToolCard } from './ToolCard';
 export { StreamingMessage } from './StreamingMessage';
-export { MessageList } from './MessageList';
 export { DiffCard } from './DiffCard';
 export { DiffViewer } from './DiffViewer';
 export { DiffList } from './DiffList';

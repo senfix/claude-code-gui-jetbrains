@@ -96,11 +96,6 @@ export const ThinkingStreamingMessage: React.FC<ThinkingStreamingMessageProps> =
                     </div>
                 )}
 
-                {isStreaming && (
-                    <div className="streaming-indicator">
-                        <span className="dot-pulse"/>
-                    </div>
-                )}
             </div>
         </ToolWrapper>
     );

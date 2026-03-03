@@ -9,6 +9,7 @@ import { useSessionContext } from '../contexts/SessionContext';
 import { useChatStreamContext } from '../contexts/ChatStreamContext';
 import { StreamErrorBanner } from './StreamErrorBanner';
 import { LoadedMessageType, MessageRole } from '../dto/common';
+import './streaming.css';
 
 /**
  * Convert progress entries into SubAgentMessage array.
@@ -35,7 +36,7 @@ function buildSubAgentMessages(progressEntries: LoadedMessageDto[]): SubAgentMes
 
 export function ChatMessageArea() {
   const { workingDirectory, setWorkingDirectory } = useSessionContext();
-  const { messages, retry: onRetry } = useChatStreamContext();
+  const { messages, retry: onRetry, isStreaming } = useChatStreamContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -162,6 +163,11 @@ export function ChatMessageArea() {
           <MessageBubble message={message} onRetry={onRetry} />
         </div>
       ))}
+      {isStreaming && (
+        <div className="streaming-indicator">
+          <span className="dot-pulse"/>
+        </div>
+      )}
       <StreamErrorBanner />
       <div ref={messagesEndRef} />
     </div>
