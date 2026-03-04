@@ -1,4 +1,5 @@
 import { SessionDropdown } from './SessionDropdown';
+import { TokenBatteryButton } from './TokenBatteryButton';
 import { SettingsButton } from './SettingsButton';
 import { NewTabButton } from './NewTabButton';
 import { useDocumentTitle } from '@/hooks';
@@ -17,6 +18,7 @@ export function SessionHeader() {
 
       {/* Right: buttons */}
       <div className="flex items-center gap-1">
+        <TokenBatteryButton />
         <SettingsButton />
         <NewTabButton />
       </div>
