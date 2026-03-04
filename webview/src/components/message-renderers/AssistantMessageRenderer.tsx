@@ -4,7 +4,6 @@ import { ToolUseBlockDto, ThinkingBlockDto, ContentBlockType } from '../../dto/m
 import { StreamingMessage } from '../StreamingMessage';
 import { ToolRenderer } from './ToolRenderer';
 import {ThinkingStreamingMessage} from "@/components/ThinkingStreamingMessage.tsx";
-import {ToolWrapper} from "@/components/message-renderers/ToolRenderers/common";
 
 interface AssistantMessageRendererProps {
   message: LoadedMessageDto;

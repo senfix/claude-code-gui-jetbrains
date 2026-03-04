@@ -60,6 +60,8 @@ export async function ensureClaudeProcess(
     'stream-json',
     '--verbose',
     '--include-partial-messages',
+    '--permission-prompt-tool',
+    'stdio',
     sessionFlag,
     targetSessionId,
   ];
@@ -243,6 +245,64 @@ export function sendMessageToProcess(
   return true;
 }
 
+/**
+ * tool_result를 CLI stdin에 전송한다.
+ * 일반 user message와 달리 content를 tool_result 블록 배열로 구성한다.
+ */
+export function sendToolResultToProcess(
+  connections: ConnectionManager,
+  sessionId: string,
+  toolResult: { type: string; tool_use_id: string; content: string; is_error: boolean },
+): boolean {
+  const session = connections.getSession(sessionId);
+  if (!session?.process?.stdin?.writable) {
+    console.error('[node-backend]', `No writable stdin for session: ${sessionId}`);
+    return false;
+  }
+
+  const stdinMessage =
+    JSON.stringify({
+      type: 'user',
+      message: { role: 'user', content: [toolResult] },
+    }) + '\n';
+
+  const logPreview = stdinMessage.length > 200
+    ? stdinMessage.substring(0, 200) + `... (${stdinMessage.length} bytes total)`
+    : stdinMessage.trimEnd();
+  console.error('[node-backend]', `Sending tool_result to stdin: ${logPreview}`);
+  session.process.stdin.write(stdinMessage);
+  return true;
+}
+
+/**
+ * control_response를 CLI stdin에 전송한다.
+ * AskUserQuestion 등 control_request에 대한 응답용.
+ */
+export function sendControlResponseToProcess(
+  connections: ConnectionManager,
+  sessionId: string,
+  response: Record<string, unknown>,
+): boolean {
+  const session = connections.getSession(sessionId);
+  if (!session?.process?.stdin?.writable) {
+    console.error('[node-backend]', `No writable stdin for session: ${sessionId}`);
+    return false;
+  }
+
+  const stdinMessage =
+    JSON.stringify({
+      type: 'control_response',
+      response,
+    }) + '\n';
+
+  const logPreview = stdinMessage.length > 200
+    ? stdinMessage.substring(0, 200) + `... (${stdinMessage.length} bytes total)`
+    : stdinMessage.trimEnd();
+  console.error('[node-backend]', `Sending control_response to stdin: ${logPreview}`);
+  session.process.stdin.write(stdinMessage);
+  return true;
+}
+
 function handleStreamEvent(
   targetSessionId: string,
   event: Record<string, unknown>,
@@ -351,6 +411,17 @@ function handleStreamEvent(
         data: event.data,
         timestamp: event.timestamp,
         uuid: event.uuid,
+      });
+      break;
+    }
+
+    case 'control_request': {
+      const request = event.request as Record<string, unknown>;
+      const requestId = event.request_id as string;
+      console.error('[node-backend]', `control_request received: ${(request as any)?.subtype} (request_id: ${requestId})`);
+      connections.broadcastToSession(targetSessionId, 'CONTROL_REQUEST', {
+        requestId,
+        request,
       });
       break;
     }

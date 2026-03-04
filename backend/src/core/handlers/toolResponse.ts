@@ -1,7 +1,7 @@
 import type { ConnectionManager } from '../../ws/connection-manager';
 import type { Bridge } from '../../bridge/bridge-interface';
 import type { IPCMessage } from '../types';
-import { sendMessageToProcess } from '../claude-process';
+import { sendToolResultToProcess, sendControlResponseToProcess } from '../claude-process';
 
 export function toolResponseHandler(
   connectionId: string,
@@ -20,21 +20,34 @@ export function toolResponseHandler(
 
   const toolUseId = message.payload?.toolUseId as string;
   const approved = (message.payload?.approved as boolean) ?? true;
-  const resultContent =
-    (message.payload?.result as string) ||
-    (approved ? 'Tool execution approved' : 'Tool execution rejected');
+  const controlRequestId = message.payload?.controlRequestId as string | undefined;
 
-  // Build tool result JSON matching Kotlin's format
-  const toolResult = {
-    tool_use_id: toolUseId,
-    content: resultContent,
-    is_error: !approved,
-  };
+  if (controlRequestId) {
+    // AskUserQuestion: control_response 프로토콜
+    const response = {
+      subtype: 'success' as const,
+      request_id: controlRequestId,
+      response: approved
+        ? { behavior: 'allow', updatedInput: message.payload?.updatedInput }
+        : { behavior: 'deny', message: 'User declined to answer' },
+    };
+    sendControlResponseToProcess(connections, sessionId, response);
+    console.error('[node-backend]', `CONTROL_RESPONSE sent for request ${controlRequestId} (approved: ${approved})`);
+  } else {
+    // 일반 tool permission: tool_result 방식
+    const resultContent =
+      (message.payload?.result as string) ||
+      (approved ? 'Tool execution approved' : 'Tool execution rejected');
 
-  // Send as user message wrapping the tool result (matches Kotlin's sendCliMessage pattern)
-  const toolResultJson = JSON.stringify(toolResult);
-  sendMessageToProcess(connections, sessionId, toolResultJson);
+    const toolResult = {
+      type: 'tool_result' as const,
+      tool_use_id: toolUseId,
+      content: resultContent,
+      is_error: !approved,
+    };
+    sendToolResultToProcess(connections, sessionId, toolResult);
+    console.error('[node-backend]', `TOOL_RESPONSE sent for tool ${toolUseId} (approved: ${approved})`);
+  }
 
-  console.error('[node-backend]', `TOOL_RESPONSE sent for tool ${toolUseId} (approved: ${approved})`);
   connections.sendTo(connectionId, 'ACK', { requestId: message.requestId });
 }

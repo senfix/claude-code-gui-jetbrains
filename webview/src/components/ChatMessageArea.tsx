@@ -35,9 +35,14 @@ function buildSubAgentMessages(progressEntries: LoadedMessageDto[]): SubAgentMes
     });
 }
 
-export function ChatMessageArea() {
+interface Props {
+  isStreaming: boolean;
+}
+
+export function ChatMessageArea(props: Props) {
+  const { isStreaming } = props;
   const { workingDirectory, setWorkingDirectory } = useSessionContext();
-  const { messages, retry: onRetry, isStreaming } = useChatStreamContext();
+  const { messages, retry: onRetry } = useChatStreamContext();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
