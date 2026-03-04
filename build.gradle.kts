@@ -44,6 +44,11 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
+            <h3>0.6.7 - Permission Prompt &amp; Streaming Animation</h3>
+            <ul>
+                <li>Implement permission-prompt-tool protocol for AskUserQuestion and permission request handling</li>
+                <li>Redesign StreamingIndicator with Cursor-style scramble animation</li>
+            </ul>
             <h3>0.6.6 - Process Lifecycle &amp; Error Resilience</h3>
             <ul>
                 <li>Prevent duplicate Node.js backend processes with project-level singleton service</li>

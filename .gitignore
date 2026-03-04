@@ -33,6 +33,9 @@ src/main/resources/backend/
 # TypeScript build info
 *.tsbuildinfo
 
+# TypeScript in-place compile artifacts
+backend/src/**/*.js
+
 # Vite config build artifacts
 webview/vite.config.d.ts
 webview/vite.config.js

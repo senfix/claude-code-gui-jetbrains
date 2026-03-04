@@ -57,7 +57,7 @@ describe('ChatMessageArea', () => {
   });
 
   it('shows ProjectSelector when no working directory and no kotlinBridge', () => {
-    render(<ChatMessageArea />);
+    render(<ChatMessageArea isStreaming={false} />);
 
     expect(screen.getByTestId('project-selector')).toBeInTheDocument();
     expect(screen.getByText('Select Project')).toBeInTheDocument();
@@ -66,7 +66,7 @@ describe('ChatMessageArea', () => {
   it('shows loading message when no working directory with kotlinBridge', () => {
     (window as any).kotlinBridge = {};
 
-    render(<ChatMessageArea />);
+    render(<ChatMessageArea isStreaming={false} />);
 
     expect(screen.getByText('Loading working directory...')).toBeInTheDocument();
     expect(screen.queryByTestId('project-selector')).not.toBeInTheDocument();
@@ -75,7 +75,7 @@ describe('ChatMessageArea', () => {
   it('shows empty state message when no messages with working directory', () => {
     mockSessionContext.workingDirectory = '/test/path';
 
-    render(<ChatMessageArea />);
+    render(<ChatMessageArea isStreaming={false} />);
 
     expect(screen.getByText('Type a message')).toBeInTheDocument();
   });
@@ -89,7 +89,7 @@ describe('ChatMessageArea', () => {
       timestamp: new Date().toISOString(),
     }];
 
-    render(<ChatMessageArea />);
+    render(<ChatMessageArea isStreaming={false} />);
 
     expect(screen.getByTestId('message-bubble-msg1')).toBeInTheDocument();
     expect(screen.getByText('user: Hello, assistant!')).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe('ChatMessageArea', () => {
       timestamp: new Date().toISOString(),
     }];
 
-    render(<ChatMessageArea />);
+    render(<ChatMessageArea isStreaming={false} />);
 
     expect(screen.getByTestId('message-bubble-msg2')).toBeInTheDocument();
     expect(screen.getByText('assistant: Hello, user!')).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('ChatMessageArea', () => {
       timestamp: new Date().toISOString(),
     }];
 
-    render(<ChatMessageArea />);
+    render(<ChatMessageArea isStreaming={false} />);
 
     expect(screen.getByTestId('message-bubble-msg3')).toBeInTheDocument();
     expect(screen.getByTestId('tool-card-tool1')).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe('ChatMessageArea', () => {
       },
     ];
 
-    render(<ChatMessageArea />);
+    render(<ChatMessageArea isStreaming={false} />);
 
     expect(screen.getByTestId('message-bubble-msg1')).toBeInTheDocument();
     expect(screen.getByTestId('message-bubble-msg2')).toBeInTheDocument();
@@ -182,7 +182,7 @@ describe('ChatMessageArea', () => {
       timestamp: new Date().toISOString(),
     }];
 
-    render(<ChatMessageArea />);
+    render(<ChatMessageArea isStreaming={false} />);
 
     expect(screen.getByTestId('tool-card-tool1')).toBeInTheDocument();
     expect(screen.getByTestId('tool-card-tool2')).toBeInTheDocument();
