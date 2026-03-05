@@ -45,6 +45,12 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
+            <h3>0.7.1 - Usage API Reliability Improvements</h3>
+            <ul>
+                <li>Improve Usage API rate limit handling with Retry-After header support</li>
+                <li>Add inflight request deduplication to prevent concurrent Usage API calls</li>
+                <li>Increase Usage API cache TTL to 60 seconds for better rate limit protection</li>
+            </ul>
             <h3>0.7.0 - Account Switching, Terminal Integration &amp; Usage Battery</h3>
             <ul>
                 <li>Add Switch Account page with account routing</li>
