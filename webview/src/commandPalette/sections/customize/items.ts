@@ -10,5 +10,12 @@ export const customizeItems = [
   new StaticItem('permissions', 'Permissions', { icon: IconType.Terminal }),
   new StaticItem('mcp-status', 'MCP status'),
   new StaticItem('manage-plugins', 'Manage plugins'),
-  new StaticItem('open-terminal', 'Open Claude in Terminal', { icon: IconType.Terminal }),
+  new StaticItem('open-terminal', 'Open Claude in Terminal', {
+    icon: IconType.Terminal,
+    disabled: false,
+    serviceAction: async (services) => {
+      const workingDir = services.session.workingDirectory ?? '';
+      await services.adapter.openTerminal(workingDir);
+    },
+  }),
 ];
