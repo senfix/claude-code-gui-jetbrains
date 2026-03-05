@@ -8,6 +8,7 @@ export {
   hashToRoute,
   routeToHash,
   isSettingsRoute,
+  isSwitchAccountRoute,
   type RouteMeta,
 } from './routes';
 

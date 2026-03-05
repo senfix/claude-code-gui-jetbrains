@@ -7,6 +7,7 @@ import {
   InformationCircleIcon,
   ChartBarSquareIcon,
   ArrowLeftIcon,
+  ArrowsRightLeftIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
 
@@ -23,6 +24,7 @@ export enum IconName {
   CHART_BAR_SQUARE = 'ChartBarSquareIcon',
   INFORMATION_CIRCLE = 'InformationCircleIcon',
   ARROW_LEFT = 'ArrowLeftIcon',
+  ARROWS_RIGHT_LEFT = 'ArrowsRightLeftIcon',
 }
 
 /**
@@ -39,6 +41,7 @@ export enum Route {
   SETTINGS_ADVANCED = 'settings/advanced',
   SETTINGS_USAGE = 'settings/usage',
   SETTINGS_ABOUT = 'settings/about',
+  SWITCH_ACCOUNT = 'switch-account',
 }
 
 export interface RouteMeta {
@@ -56,6 +59,12 @@ export const ROUTE_META: Record<Route, RouteMeta> = {
     path: '/',
     label: 'Chat',
     icon: null
+  },
+  [Route.SWITCH_ACCOUNT]: {
+    path: '/switch-account',
+    label: 'Switch account',
+    icon: IconName.ARROWS_RIGHT_LEFT,
+    description: 'Choose authentication method',
   },
   [Route.SETTINGS]: {
     path: '/settings',
@@ -118,6 +127,7 @@ export const ICON_COMPONENTS: Record<IconName, ComponentType<SVGProps<SVGSVGElem
   [IconName.CHART_BAR_SQUARE]: ChartBarSquareIcon,
   [IconName.INFORMATION_CIRCLE]: InformationCircleIcon,
   [IconName.ARROW_LEFT]: ArrowLeftIcon,
+  [IconName.ARROWS_RIGHT_LEFT]: ArrowsRightLeftIcon,
 };
 
 /**
@@ -148,6 +158,13 @@ export function routeToHash(route: Route): string {
  */
 export function isSettingsRoute(route: Route): boolean {
   return route.startsWith('settings');
+}
+
+/**
+ * Switch account 라우트인지 확인
+ */
+export function isSwitchAccountRoute(route: Route): boolean {
+  return route === Route.SWITCH_ACCOUNT;
 }
 
 /**

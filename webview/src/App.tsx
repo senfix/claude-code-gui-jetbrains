@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { AppProviders } from './contexts';
-import { ChatPanel, Settings } from './components';
+import { ChatPanel, Settings, SwitchAccount } from './components';
 import { AccountUsageModal } from './components/AccountUsageModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { useRouter, isSettingsRoute } from './router';
+import { useRouter, isSettingsRoute, isSwitchAccountRoute } from './router';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { OPEN_ACCOUNT_USAGE_EVENT } from './commandPalette/sections/model/items';
 
@@ -20,7 +20,7 @@ function AppContent() {
 
   return (
     <>
-      {isSettingsRoute(route) ? <Settings /> : <ChatPanel />}
+      {isSettingsRoute(route) ? <Settings /> : isSwitchAccountRoute(route) ? <SwitchAccount /> : <ChatPanel />}
       {isAccountUsageOpen && (
         <AccountUsageModal onClose={() => setIsAccountUsageOpen(false)} />
       )}
