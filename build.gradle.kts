@@ -45,6 +45,17 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
+            <h3>0.7.0 - Account Switching, Terminal Integration &amp; Usage Battery</h3>
+            <ul>
+                <li>Add Switch Account page with account routing</li>
+                <li>Open terminal and external URL integration</li>
+                <li>Move Terminal App settings to CLI page with CLI path detection</li>
+                <li>Add 5-hour token usage battery widget in top bar</li>
+                <li>Add project folder switch button in top bar</li>
+                <li>Improve stop/resume button to work across all active states</li>
+                <li>Fix Cmd+Arrow text navigation in JCEF</li>
+                <li>Add in-memory caching for Usage API to prevent 429 rate limit</li>
+            </ul>
             <h3>0.6.7 - Permission Prompt &amp; Streaming Animation</h3>
             <ul>
                 <li>Implement permission-prompt-tool protocol for AskUserQuestion and permission request handling</li>
