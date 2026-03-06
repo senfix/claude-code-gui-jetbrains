@@ -120,7 +120,6 @@ class ClaudeCodePanel(
             override fun onLoadEnd(browser: CefBrowser, frame: CefFrame, httpStatusCode: Int) {
                 if (frame.isMain) {
                     injectCursorTracking(frame)
-                    injectInitialHash(frame)
                     logger.info("WebView loaded successfully")
                     javax.swing.SwingUtilities.invokeLater {
                         this@ClaudeCodePanel.browser.component.requestFocusInWindow()
@@ -185,16 +184,6 @@ class ClaudeCodePanel(
     }
 
     /**
-     * Set the initial hash if specified (e.g., for settings page navigation).
-     */
-    private fun injectInitialHash(frame: CefFrame) {
-        if (initialHash != null) {
-            val escapedHash = initialHash.replace("\\", "\\\\").replace("'", "\\'")
-            frame.executeJavaScript("window.location.hash = '$escapedHash';", frame.url, 0)
-        }
-    }
-
-    /**
      * Opens the JCEF DevTools for debugging.
      */
     private fun openDevTools() {
@@ -221,7 +210,7 @@ class ClaudeCodePanel(
         } ?: ""
 
         val envParam = if (workingDirParam.isNotEmpty()) "&env=jcef" else "?env=jcef"
-        val url = "http://localhost:$port$workingDirParam$envParam"
+        val url = "http://localhost:$port$workingDirParam$envParam${initialHash ?: ""}"
         System.err.println("[ClaudeCodePanel] Loading URL: $url")
         logger.info("Loading WebView from Node.js backend: $url")
 
