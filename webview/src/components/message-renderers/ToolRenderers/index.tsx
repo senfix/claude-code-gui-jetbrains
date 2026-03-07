@@ -22,33 +22,20 @@ interface ToolRendererProps {
     message?: LoadedMessageDto;
 }
 
-// Add all renderer component here.
-const Renderers = [
-    BashRenderer,
-    TodoWriteRenderer,
-    TaskRenderer,
-    ReadRenderer,
-    GrepRenderer,
-    GlobRenderer,
-    EditRenderer,
-    AskUserQuestionRenderer,
-    EnterPlanModeRenderer,
-    ExitPlanModeRenderer,
-    WebFetchRenderer,
-    WebSearchRenderer,
-    WriteRenderer,
-    SkillRenderer,
-];
-
-export const ToolRendererMap = (() => {
-    const map = new Map<string, FC<ToolRendererProps>>();
-    Renderers.forEach((R) => registerTool(map, R));
-    // Claude Code CLI는 sub-agent tool을 'Agent'라는 이름으로 전송함 (구버전: 'Task')
-    registerTool(map, TaskRenderer, 'Agent');
-    return map;
-})();
-
-function registerTool(map: Map<string, FC<ToolRendererProps>>, tool: FC<ToolRendererProps>, name?: string) {
-    const key = name || tool.name.replace('Renderer', '');
-    map.set(key, tool);
-}
+export const ToolRendererMap = new Map<string, FC<ToolRendererProps>>([
+    ['Bash', BashRenderer],
+    ['TodoWrite', TodoWriteRenderer],
+    ['Task', TaskRenderer],
+    ['Agent', TaskRenderer],
+    ['Read', ReadRenderer],
+    ['Grep', GrepRenderer],
+    ['Glob', GlobRenderer],
+    ['Edit', EditRenderer],
+    ['AskUserQuestion', AskUserQuestionRenderer],
+    ['EnterPlanMode', EnterPlanModeRenderer],
+    ['ExitPlanMode', ExitPlanModeRenderer],
+    ['WebFetch', WebFetchRenderer],
+    ['WebSearch', WebSearchRenderer],
+    ['Write', WriteRenderer],
+    ['Skill', SkillRenderer],
+]);

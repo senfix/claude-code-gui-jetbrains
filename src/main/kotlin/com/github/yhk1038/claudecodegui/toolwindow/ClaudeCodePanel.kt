@@ -54,6 +54,7 @@ class ClaudeCodePanel(
     // Title change callback (set by FileEditor)
     var onTitleChanged: ((String) -> Unit)? = null
 
+    private val panelId = UUID.randomUUID().toString()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val backendService = NodeBackendService.getInstance(project)
@@ -76,7 +77,7 @@ class ClaudeCodePanel(
         setupBrowserHandlers()
 
         // Phase 3: Start Node.js backend and load URL once ready
-        backendService.ensureStarted(createRpcHandler())
+        backendService.ensureStarted(panelId, createRpcHandler())
         scope.launch {
             try {
                 val port = backendService.awaitPort()
@@ -266,7 +267,7 @@ class ClaudeCodePanel(
         revalidate()
         repaint()
 
-        backendService.restart(createRpcHandler())
+        backendService.restart()
         scope.launch {
             try {
                 val port = backendService.awaitPort()
@@ -369,7 +370,7 @@ class ClaudeCodePanel(
 
     override fun dispose() {
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
-        backendService.releasePanel()
+        backendService.releasePanel(panelId)
         Disposer.dispose(cursorQuery)
         Disposer.dispose(browser)
         logger.info("ClaudeCodePanel disposed")
