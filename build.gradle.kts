@@ -106,14 +106,10 @@ intellijPlatform {
             untilBuild = "253.*"
         }
         changeNotes = """
-            <h3>0.8.2 - License Change and Backend Improvements</h3>
+            <h3>0.8.3 - EDT Freeze Fix and Documentation Update</h3>
             <ul>
-                <li>Changed license from MIT to AGPL-3.0</li>
-                <li>Per-panel RPC handler registration for multi-panel support</li>
-                <li>Auto-shutdown backend when last panel closes</li>
-                <li>Auto-kill zombie processes on default port at startup</li>
-                <li>Simplified WebSocket server port binding</li>
-                <li>Removed unused Kotlin bridge files</li>
+                <li>Fixed ToolWindow EDT freeze by making openFile calls asynchronous via invokeLater</li>
+                <li>Added additional screenshots to README</li>
             </ul>
         """.trimIndent()
     }
