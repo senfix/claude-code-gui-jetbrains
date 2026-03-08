@@ -35,8 +35,8 @@ export function GrepRenderer(props: RendererProps) {
             <ToolHeader name={name} className="mb-2.5">
                 <div className="text-white/80 text-[12px] line-clamp-2 break-all">
                     "{pattern}"{` `}
-                    {'path' in toolUse.input && `(in ${toolUse.input.path})`}
-                    {'glob' in toolUse.input && `(glob: ${toolUse.input.glob})`}
+                    {toolUse.input && 'path' in toolUse.input && `(in ${toolUse.input.path})`}
+                    {toolUse.input && 'glob' in toolUse.input && `(glob: ${toolUse.input.glob})`}
                 </div>
             </ToolHeader>
 
