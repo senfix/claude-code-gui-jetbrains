@@ -106,11 +106,13 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
-            <h3>0.8.4 - Terminal API Compatibility and EADDRINUSE Fix</h3>
+            <h3>0.8.4 - Help Docs, Terminal API Compatibility, and Bug Fixes</h3>
             <ul>
+                <li>Added "View help docs" slash command for in-IDE documentation access</li>
                 <li>Added IDE 2025.2+ Reworked Terminal API compatibility via reflection</li>
                 <li>Fixed EADDRINUSE error by automatically killing stale processes and retrying</li>
                 <li>Extended IDE support range up to 2026.1 (untilBuild 261.*)</li>
+                <li>Rewrote README overview with translations in 6 languages</li>
             </ul>
         """.trimIndent()
     }
