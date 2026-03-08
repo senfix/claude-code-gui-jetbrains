@@ -349,9 +349,25 @@ class ClaudeCodePanel(
                 ApplicationManager.getApplication().invokeLater {
                     try {
                         val terminalManager = org.jetbrains.plugins.terminal.TerminalToolWindowManager.getInstance(project)
+                        @Suppress("DEPRECATION")
                         val widget = terminalManager.createShellWidget(workingDir, "Claude Code", true, false)
-                        val shellWidget = org.jetbrains.plugins.terminal.ShellTerminalWidget.toShellJediTermWidgetOrThrow(widget)
-                        shellWidget.executeCommand("claude")
+
+                        val buildVersion = com.intellij.openapi.application.ApplicationInfo.getInstance().build.baselineVersion
+
+                        if (buildVersion >= 252) {
+                            // 2025.2+ : Reworked Terminal — sendCommandToExecute 사용 (reflection)
+                            try {
+                                val method = widget.javaClass.getMethod("sendCommandToExecute", String::class.java)
+                                method.invoke(widget, "claude")
+                            } catch (e: Exception) {
+                                logger.warn("sendCommandToExecute failed, falling back to legacy API", e)
+                                legacyExecuteCommand(widget)
+                            }
+                        } else {
+                            // 2024.2 ~ 2025.1 : Classic Terminal
+                            legacyExecuteCommand(widget)
+                        }
+
                         logger.info("Opened terminal with claude in: $workingDir")
                     } catch (e: Exception) {
                         logger.error("Failed to open terminal: $workingDir", e)
@@ -363,6 +379,20 @@ class ClaudeCodePanel(
                 BrowserUtil.browse(url)
                 logger.info("Opened URL in browser: $url")
             }
+        }
+    }
+
+    // ─── Terminal Helpers ────────────────────────────────────────────
+
+    @Suppress("DEPRECATION")
+    private fun legacyExecuteCommand(widget: Any) {
+        try {
+            val shellWidget = org.jetbrains.plugins.terminal.ShellTerminalWidget.toShellJediTermWidgetOrThrow(
+                widget as com.intellij.terminal.ui.TerminalWidget
+            )
+            shellWidget.executeCommand("claude")
+        } catch (e: Exception) {
+            logger.warn("Legacy terminal executeCommand failed", e)
         }
     }
 

@@ -103,7 +103,7 @@ intellijPlatform {
         }
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "253.*"
+            untilBuild = "261.*"
         }
         changeNotes = """
             <h3>0.8.3 - EDT Freeze Fix and Documentation Update</h3>
