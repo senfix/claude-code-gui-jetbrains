@@ -106,12 +106,10 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
-            <h3>0.8.5 - Fix Backend Crash and Deprecated Terminal API</h3>
+            <h3>0.8.6 - Fix Deprecated Terminal API Warning</h3>
             <ul>
-                <li>Fixed backend crash caused by unhandled promise rejection when Claude CLI is not found (ENOENT)</li>
-                <li>Augmented PATH with well-known directories (~/.local/bin, ~/.volta/bin, /opt/homebrew/bin, etc.) so the CLI is discoverable even when IDE has a limited PATH</li>
-                <li>Improved error handling in session start and message send handlers</li>
-                <li>Replaced deprecated TerminalToolWindowManager.createShellWidget() with reflection-based approach supporting both new (253+) and legacy (242-252) terminal APIs</li>
+                <li>Replaced deprecated Terminal API direct calls with reflection-based approach to resolve Plugin Verifier warnings</li>
+                <li>Supports full JetBrains IDE version range (242–261) for terminal integration</li>
             </ul>
         """.trimIndent()
     }
