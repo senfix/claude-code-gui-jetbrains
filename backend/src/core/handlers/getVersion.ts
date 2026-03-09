@@ -1,18 +1,12 @@
 import { exec } from 'child_process';
-import { readFile } from 'fs/promises';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import type { ConnectionManager } from '../../ws/connection-manager';
 import type { Bridge } from '../../bridge/bridge-interface';
 import type { IPCMessage } from '../types';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+declare const __PLUGIN_VERSION__: string;
 
-async function getPluginVersion(): Promise<string> {
-  const pkgPath = join(__dirname, '../../../package.json');
-  const raw = await readFile(pkgPath, 'utf-8');
-  const pkg = JSON.parse(raw) as { version: string };
-  return pkg.version;
+function getPluginVersion(): string {
+  return typeof __PLUGIN_VERSION__ !== 'undefined' ? __PLUGIN_VERSION__ : 'unknown';
 }
 
 function getCliVersion(): Promise<string | null> {
@@ -36,11 +30,11 @@ export async function getVersionHandler(
   bridge: Bridge,
 ): Promise<void> {
   try {
-    const [pluginVersion, cliVersion, requiresRestart] = await Promise.all([
-      getPluginVersion().catch(() => 'unknown'),
+    const [cliVersion, requiresRestart] = await Promise.all([
       getCliVersion(),
       bridge.requiresRestart().catch(() => true),
     ]);
+    const pluginVersion = getPluginVersion();
 
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,

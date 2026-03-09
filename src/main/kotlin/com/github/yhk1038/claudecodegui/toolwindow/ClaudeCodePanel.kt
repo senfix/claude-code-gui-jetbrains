@@ -430,8 +430,10 @@ class ClaudeCodePanel(
                     try {
                         ShowSettingsUtil.getInstance().showSettingsDialog(
                             project,
-                            "Plugins"
-                        )
+                            com.intellij.ide.plugins.PluginManagerConfigurable::class.java
+                        ) { configurable ->
+                            configurable.enableSearch("Claude Code with GUI")
+                        }
                         logger.info("Opened Plugins settings dialog for plugin update")
                     } catch (e: Exception) {
                         logger.error("Failed to open Plugins settings dialog", e)

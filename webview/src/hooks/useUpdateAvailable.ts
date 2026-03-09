@@ -38,6 +38,7 @@ export function useUpdateAvailable(): UseUpdateAvailableReturn {
 
   const hasUpdate = useMemo(() => {
     if (!latestUpdate) return false;
+    if (!pluginVersion || pluginVersion === '...' || pluginVersion === 'unknown') return false;
     if (latestUpdate.version === pluginVersion) return false;
     if (latestUpdate.version === skippedVersion) return false;
     return true;
