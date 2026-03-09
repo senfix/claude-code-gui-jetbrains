@@ -106,9 +106,15 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
-            <h3>0.9.3 - Internal API Compatibility Fix</h3>
+            <h3>0.9.4 - Streaming UX & Input Improvements</h3>
             <ul>
-                <li>Fixed Plugin Verifier warning by replacing direct internal API reference with reflection</li>
+                <li>Added message queuing during streaming (Cursor-style UX)</li>
+                <li>Fixed partial JSON rendering for tool_use inputs during streaming</li>
+                <li>Fixed smart scroll to respect user scroll position during streaming</li>
+                <li>Fixed IME composition Enter key sending message prematurely</li>
+                <li>Fixed message queue not actually sending queued messages</li>
+                <li>Fixed CLI version detection in IDE environment with augmented PATH</li>
+                <li>Switched stop mechanism from SIGTERM to stdin interrupt (control_request)</li>
             </ul>
         """.trimIndent()
     }
