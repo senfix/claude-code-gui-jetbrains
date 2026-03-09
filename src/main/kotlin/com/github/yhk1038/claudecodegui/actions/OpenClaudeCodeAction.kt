@@ -1,6 +1,7 @@
 package com.github.yhk1038.claudecodegui.actions
 
 import com.github.yhk1038.claudecodegui.editor.ClaudeCodeVirtualFile
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -14,6 +15,8 @@ class OpenClaudeCodeAction : AnAction() {
         // 새 세션 열기 (UUID 생성)
         openSession(project, UUID.randomUUID().toString())
     }
+
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun update(e: AnActionEvent) {
         e.presentation.isEnabledAndVisible = e.project != null
