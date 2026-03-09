@@ -84,6 +84,16 @@ class NodeBackendService(private val project: Project) : Disposable {
             activeHandler()?.openUrl(url)
                 ?: logger.warn("No active panel handler for openUrl")
         }
+
+        override suspend fun updatePlugin() {
+            activeHandler()?.updatePlugin()
+                ?: logger.warn("No active panel handler for updatePlugin")
+        }
+
+        override suspend fun requiresRestart(): Boolean {
+            return activeHandler()?.requiresRestart()
+                ?: run { logger.warn("No active panel handler for requiresRestart"); true }
+        }
     }
 
     /**

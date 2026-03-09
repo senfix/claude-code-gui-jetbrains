@@ -8,6 +8,7 @@ import {
   ChartBarSquareIcon,
   ArrowLeftIcon,
   ArrowsRightLeftIcon,
+  ArrowUpCircleIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
 
@@ -25,6 +26,7 @@ export enum IconName {
   INFORMATION_CIRCLE = 'InformationCircleIcon',
   ARROW_LEFT = 'ArrowLeftIcon',
   ARROWS_RIGHT_LEFT = 'ArrowsRightLeftIcon',
+  ARROW_UP_CIRCLE = 'ArrowUpCircleIcon',
 }
 
 /**
@@ -40,6 +42,7 @@ export enum Route {
   SETTINGS_CLI = 'settings/cli',
   SETTINGS_ADVANCED = 'settings/advanced',
   SETTINGS_USAGE = 'settings/usage',
+  SETTINGS_RELEASES = 'settings/releases',
   SETTINGS_ABOUT = 'settings/about',
   SWITCH_ACCOUNT = 'switch-account',
 }
@@ -107,6 +110,12 @@ export const ROUTE_META: Record<Route, RouteMeta> = {
     icon: IconName.CHART_BAR_SQUARE,
     description: 'Plan usage limits and quota'
   },
+  [Route.SETTINGS_RELEASES]: {
+    path: '/settings/releases',
+    label: 'Releases',
+    icon: IconName.ARROW_UP_CIRCLE,
+    description: 'Release notes and updates',
+  },
   [Route.SETTINGS_ABOUT]: {
     path: '/settings/about',
     label: 'About',
@@ -128,6 +137,7 @@ export const ICON_COMPONENTS: Record<IconName, ComponentType<SVGProps<SVGSVGElem
   [IconName.INFORMATION_CIRCLE]: InformationCircleIcon,
   [IconName.ARROW_LEFT]: ArrowLeftIcon,
   [IconName.ARROWS_RIGHT_LEFT]: ArrowsRightLeftIcon,
+  [IconName.ARROW_UP_CIRCLE]: ArrowUpCircleIcon,
 };
 
 /**
@@ -177,6 +187,7 @@ export const SETTINGS_SUB_ROUTES: Route[] = [
   Route.SETTINGS_CLI,
   Route.SETTINGS_ADVANCED,
   Route.SETTINGS_USAGE,
+  Route.SETTINGS_RELEASES,
   Route.SETTINGS_ABOUT,
 ];
 

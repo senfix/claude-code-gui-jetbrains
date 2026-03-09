@@ -20,4 +20,6 @@ export interface Bridge {
     mode: 'files' | 'folders' | 'both';
     multiple?: boolean;
   }): Promise<{ paths: string[] }>;
+  updatePlugin(): Promise<void>;
+  requiresRestart(): Promise<boolean>;
 }

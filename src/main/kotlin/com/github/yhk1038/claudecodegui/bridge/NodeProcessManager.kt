@@ -58,6 +58,8 @@ class NodeProcessManager(
         suspend fun openSettings()
         suspend fun openTerminal(workingDir: String)
         suspend fun openUrl(url: String)
+        suspend fun updatePlugin()
+        suspend fun requiresRestart(): Boolean
     }
 
     /**
@@ -305,6 +307,16 @@ class NodeProcessManager(
                         ?: throw IllegalArgumentException("Missing 'url' param")
                     rpcHandler.openUrl(url)
                     buildJsonObject {}
+                }
+
+                "UPDATE_PLUGIN" -> {
+                    rpcHandler.updatePlugin()
+                    buildJsonObject {}
+                }
+
+                "REQUIRES_RESTART" -> {
+                    val requires = rpcHandler.requiresRestart()
+                    buildJsonObject { put("requiresRestart", requires) }
                 }
 
                 else -> {

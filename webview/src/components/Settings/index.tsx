@@ -7,6 +7,7 @@ import { CliSettings } from './Cli';
 import { AdvancedSettings } from './Advanced';
 import { AboutSettings } from './About';
 import { UsageSettings } from './Usage';
+import { ReleasesSettings } from './Releases';
 
 /**
  * Settings 메인 컴포넌트 - 현재 라우트에 따라 적절한 설정 페이지 렌더링
@@ -30,6 +31,8 @@ export function Settings() {
         return <AboutSettings />;
       case Route.SETTINGS_USAGE:
         return <UsageSettings />;
+      case Route.SETTINGS_RELEASES:
+        return <ReleasesSettings />;
       default:
         return <GeneralSettings />;
     }

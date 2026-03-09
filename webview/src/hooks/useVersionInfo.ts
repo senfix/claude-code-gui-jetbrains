@@ -4,11 +4,13 @@ import { useBridgeContext } from '@/contexts/BridgeContext';
 interface VersionInfo {
   pluginVersion: string;
   cliVersion: string | null;
+  requiresRestart: boolean;
 }
 
 interface UseVersionInfoReturn {
   pluginVersion: string;
   cliVersion: string | null;
+  requiresRestart: boolean;
   isLoading: boolean;
   refresh: () => Promise<void>;
 }
@@ -29,6 +31,7 @@ export function useVersionInfo(): UseVersionInfoReturn {
         const info: VersionInfo = {
           pluginVersion: result.pluginVersion ?? 'unknown',
           cliVersion: result.cliVersion ?? null,
+          requiresRestart: result.requiresRestart ?? true,
         };
         cachedVersion = info;
         setVersion(info);
@@ -49,6 +52,7 @@ export function useVersionInfo(): UseVersionInfoReturn {
   return {
     pluginVersion: version?.pluginVersion ?? '...',
     cliVersion: version?.cliVersion ?? null,
+    requiresRestart: version?.requiresRestart ?? true,
     isLoading,
     refresh: fetchVersion,
   };

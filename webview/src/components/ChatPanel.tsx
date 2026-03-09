@@ -4,6 +4,7 @@ import { SessionHeader } from './SessionHeader';
 import { ChatMessageArea } from './ChatMessageArea';
 import { PermissionBanner } from './PermissionBanner';
 import { AskUserQuestionInputPanel } from './AskUserQuestionInputPanel';
+import { UpdateBanner } from './UpdateBanner';
 import { useChatInputFocus } from '../contexts/ChatInputFocusContext';
 import { useChatStreamContext } from '../contexts/ChatStreamContext';
 import { usePendingAskUserQuestion } from '../hooks/usePendingAskUserQuestion';
@@ -37,6 +38,7 @@ export function ChatPanel() {
       <div className="fixed w-full top-0 bg-blend-darken bg-neutral-900 z-10">
         <SessionHeader />
       </div>
+      <UpdateBanner />
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto w-full h-screen pt-10 pb-36 bg-neutral-900 z-0">

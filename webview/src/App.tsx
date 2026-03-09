@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { AppProviders } from './contexts';
 import { ChatPanel, Settings, SwitchAccount } from './components';
 import { AccountUsageModal } from './components/AccountUsageModal';
@@ -24,6 +25,7 @@ function AppContent() {
       {isAccountUsageOpen && (
         <AccountUsageModal onClose={() => setIsAccountUsageOpen(false)} />
       )}
+      <Toaster />
     </>
   );
 }

@@ -30,6 +30,8 @@ import { openUrlHandler } from './openUrl';
 import { getAvailableTerminalsHandler } from './getAvailableTerminals';
 import { getDetectedCliPathHandler } from './getDetectedCliPath';
 import { pickFilesHandler } from './pickFiles';
+import { getPluginUpdatesHandler } from './getPluginUpdates';
+import { updatePluginHandler } from './updatePlugin';
 
 export async function handleMessage(
   connectionId: string,
@@ -126,6 +128,12 @@ export async function handleMessage(
       break;
     case 'PICK_FILES':
       await pickFilesHandler(connectionId, message, connections, bridge);
+      break;
+    case 'GET_PLUGIN_UPDATES':
+      await getPluginUpdatesHandler(connectionId, message, connections, bridge);
+      break;
+    case 'UPDATE_PLUGIN':
+      await updatePluginHandler(connectionId, message, connections, bridge);
       break;
     default:
       console.error('[node-backend]', `Unknown message type: ${message.type}`);

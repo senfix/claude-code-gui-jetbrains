@@ -33,12 +33,13 @@ export async function getVersionHandler(
   connectionId: string,
   message: IPCMessage,
   connections: ConnectionManager,
-  _bridge: Bridge,
+  bridge: Bridge,
 ): Promise<void> {
   try {
-    const [pluginVersion, cliVersion] = await Promise.all([
+    const [pluginVersion, cliVersion, requiresRestart] = await Promise.all([
       getPluginVersion().catch(() => 'unknown'),
       getCliVersion(),
+      bridge.requiresRestart().catch(() => true),
     ]);
 
     connections.sendTo(connectionId, 'ACK', {
@@ -46,6 +47,7 @@ export async function getVersionHandler(
       status: 'ok',
       pluginVersion,
       cliVersion,
+      requiresRestart,
     });
   } catch (err) {
     connections.sendTo(connectionId, 'ACK', {

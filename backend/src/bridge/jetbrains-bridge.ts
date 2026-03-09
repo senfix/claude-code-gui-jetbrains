@@ -144,4 +144,13 @@ export class JetBrainsBridge implements Bridge {
     const paths = result['paths'];
     return { paths: Array.isArray(paths) ? (paths as string[]) : [] };
   }
+
+  async updatePlugin(): Promise<void> {
+    await this.request('UPDATE_PLUGIN', {});
+  }
+
+  async requiresRestart(): Promise<boolean> {
+    const result = await this.request('REQUIRES_RESTART', {});
+    return result['requiresRestart'] === true;
+  }
 }

@@ -198,6 +198,31 @@ if ($dialog.ShowDialog() -eq 'OK') {
     });
   }
 
+  async updatePlugin(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const url = 'https://plugins.jetbrains.com/plugin/30313-claude-code-with-gui';
+      let command: string;
+      if (process.platform === 'darwin') {
+        command = `open "${url}"`;
+      } else if (process.platform === 'win32') {
+        command = `start "" "${url}"`;
+      } else {
+        command = `xdg-open "${url}"`;
+      }
+
+      exec(command, (err) => {
+        if (err) {
+          console.error('[node-backend]', 'Failed to open plugin marketplace URL:', err.message);
+        }
+        resolve();
+      });
+    });
+  }
+
+  async requiresRestart(): Promise<boolean> {
+    return true;
+  }
+
   async openTerminal(workingDir: string): Promise<void> {
     const settings = await readSettingsFile();
     const terminalApp = settings['terminalApp'] as string | null;
