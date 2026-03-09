@@ -106,9 +106,10 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
-            <h3>0.9.1 - Remove Internal API Usage</h3>
+            <h3>0.9.2 - Battery UI & Session Restore Fix</h3>
             <ul>
-                <li>Removed usage of IdeaPluginDescriptorImpl internal API to comply with JetBrains plugin guidelines</li>
+                <li>Fixed battery UI auto-refresh and context window usage restore on session recovery</li>
+                <li>Migrated build system from .envrc aliases to scripts/build.sh</li>
             </ul>
         """.trimIndent()
     }
