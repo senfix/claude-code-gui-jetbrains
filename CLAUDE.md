@@ -119,6 +119,16 @@ Idle → Streaming → Waiting Permission → Has Diff → Error
 | `/build` | `.claude/skills/build.md` | "빌드", "build", "컴파일", "compile" |
 | `/precheck` | `.claude/skills/precheck.md` | "프리체크", "precheck", "배포 전 검수" |
 
+## JetBrains SDK API 사용 주의사항
+
+JetBrains Marketplace 배포 시 **Plugin Verifier**가 API 사용을 자동 검증한다.
+
+- **Deprecated API** 사용 → 경고(warning)
+- **Internal API** 사용 → 오류(error), 배포 거부 가능
+- `EnvironmentUtil` 등 internal/deprecated 가능성이 있는 클래스 주의
+- `@ApiStatus.Internal`, `impl` 패키지 내 클래스는 절대 사용 금지
+- 배포 전 `./scripts/build.sh dist`로 빌드 후 Plugin Verifier 결과 반드시 확인
+
 ## 작업 플랜
 
 작업을 시작하기 전에 `ignore/plan.md`를 반드시 읽고, 에이전트 지시문을 따를 것. 대화 중 "플랜 파일"이라 하면 이 파일을 의미한다. 사용자가 다음 작업을 물어본다면 이 플랜 파일을 기반으로 먼저 답변할 것.
