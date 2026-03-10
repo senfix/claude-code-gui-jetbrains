@@ -39,7 +39,7 @@ function extractTaskAgentMappings(messages: SessionMessage[]): Map<string, strin
         block &&
         typeof block === 'object' &&
         (block as Record<string, unknown>).type === 'tool_use' &&
-        (block as Record<string, unknown>).name === 'Task'
+        ((block as Record<string, unknown>).name === 'Task' || (block as Record<string, unknown>).name === 'Agent')
       ) {
         const id = (block as Record<string, unknown>).id;
         if (typeof id === 'string') {
@@ -176,7 +176,7 @@ export async function loadSessionMessages(workingDir: string, targetSessionId: s
             block &&
             typeof block === 'object' &&
             (block as Record<string, unknown>).type === 'tool_use' &&
-            (block as Record<string, unknown>).name === 'Task'
+            ((block as Record<string, unknown>).name === 'Task' || (block as Record<string, unknown>).name === 'Agent')
           ) {
             const id = (block as Record<string, unknown>).id;
             if (typeof id === 'string' && toolUseToAgentId.has(id)) {

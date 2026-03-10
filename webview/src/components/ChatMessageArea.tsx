@@ -108,7 +108,7 @@ export function ChatMessageArea(props: Props) {
     // Phase 1.5: Attach progress entries to Task tool_use blocks
     for (const [parentId, progressEntries] of progressMap) {
       const toolUseBlock = toolUseMap.get(parentId);
-      if (toolUseBlock && toolUseBlock.name === 'Task') {
+      if (toolUseBlock) {
         toolUseBlock.subAgentMessages = buildSubAgentMessages(progressEntries);
       }
     }

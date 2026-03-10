@@ -69,13 +69,15 @@ export class LoadedMessageDto {
   parentToolUseID?: string;
   data?: {
     type: string;
-    agentId: string;
+    agentId?: string;
     message: {
       type: string;
       message: {
         role: string;
         content: unknown;
       };
+      uuid?: string;
+      timestamp?: string;
     };
   };
 

@@ -621,6 +621,27 @@ export function useChatStream(options: UseChatStreamOptions): UseChatStreamRetur
       // 에이전트 루프에서 각 턴마다 해당 턴의 content만 포함하여 발생.
       // 이전 턴의 블록을 보존하면서 현재 턴의 스트리밍 블록을 최종 버전으로 교체.
       if (eventType === 'assistant') {
+        // Sub-agent assistant events → progress로 변환 (히스토리 로드와 동일한 형태)
+        if ((cliEvent as any).parent_tool_use_id) {
+          const progressEntry: LoadedMessageDto = {
+            type: LoadedMessageType.Progress,
+            uuid: (cliEvent as any).uuid || generateMessageId(),
+            parentToolUseID: (cliEvent as any).parent_tool_use_id as string,
+            data: {
+              type: 'agent_progress',
+              message: {
+                type: 'assistant',
+                message: cliEvent.message as any,
+                uuid: (cliEvent as any).uuid,
+                timestamp: (cliEvent as any).timestamp,
+              },
+            },
+            timestamp: (cliEvent as any).timestamp ?? new Date().toISOString(),
+          };
+          appendMessage(progressEntry);
+          return;
+        }
+
         const assistantMessage = cliEvent.message as Record<string, unknown> | undefined;
         if (!assistantMessage) return;
 
@@ -741,6 +762,27 @@ export function useChatStream(options: UseChatStreamOptions): UseChatStreamRetur
 
       // ── user (NEW — 다른 탭/소스에서 보낸 user 메시지) ──
       if (eventType === 'user') {
+        // Sub-agent user events → progress로 변환 (히스토리 로드와 동일한 형태)
+        if ((cliEvent as any).parent_tool_use_id) {
+          const progressEntry: LoadedMessageDto = {
+            type: LoadedMessageType.Progress,
+            uuid: (cliEvent as any).uuid || generateMessageId(),
+            parentToolUseID: (cliEvent as any).parent_tool_use_id as string,
+            data: {
+              type: 'agent_progress',
+              message: {
+                type: 'user',
+                message: cliEvent.message as any,
+                uuid: (cliEvent as any).uuid,
+                timestamp: (cliEvent as any).timestamp,
+              },
+            },
+            timestamp: (cliEvent as any).timestamp ?? new Date().toISOString(),
+          };
+          appendMessage(progressEntry);
+          return;
+        }
+
         const userMsg = cliEvent.message as Record<string, unknown> | undefined;
         if (userMsg) {
           const userMessage: LoadedMessageDto = {
