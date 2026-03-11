@@ -15,17 +15,13 @@ import {
   SettingsSection,
   SupportSection,
   ClearCommand,
-  InitCommand,
-  ReviewCommand,
-  HelpCommand,
-  CompactCommand,
+  CliPassthroughCommand,
   contextItems,
   modelItems,
   customizeItems,
   settingsItems,
   supportItems,
 } from './sections';
-import { CliPassthroughCommand } from './sections/slashCommands/CliPassthroughCommand';
 
 interface CommandPaletteRegistryContextValue {
   registry: CommandPaletteRegistry;
@@ -124,10 +120,6 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     reg.registerSection(new CustomizeSection(), customizeItems);
     reg.registerSection(new SlashCommandsSection(), [
       new ClearCommand(),
-      new InitCommand(),
-      new ReviewCommand(),
-      new HelpCommand(),
-      new CompactCommand(),
     ]);
     reg.registerSection(new SettingsSection(), settingsItems);
     reg.registerSection(new SupportSection(), supportItems);
@@ -215,8 +207,7 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
   const sections = useMemo(() => {
     if (allDynamicCommandNames.length > 0) {
       const localCommands = [
-        new ClearCommand(), new InitCommand(), new ReviewCommand(),
-        new HelpCommand(), new CompactCommand(),
+        new ClearCommand(),
       ];
       const localLabels: Set<string> = new Set(localCommands.map(c => c.label));
       const dynamicCommands = allDynamicCommandNames

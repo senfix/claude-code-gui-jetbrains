@@ -2,7 +2,7 @@
 export { ContextSection } from './context/ContextSection';
 export { ModelSection } from './model/ModelSection';
 export { CustomizeSection } from './customize/CustomizeSection';
-export { SlashCommandsSection, ClearCommand, InitCommand, ReviewCommand, HelpCommand, CompactCommand } from './slashCommands';
+export { SlashCommandsSection, ClearCommand, CliPassthroughCommand } from './slashCommands';
 export { SettingsSection } from './settings/SettingsSection';
 export { SupportSection } from './support/SupportSection';
 

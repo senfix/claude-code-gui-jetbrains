@@ -9,7 +9,8 @@ export class CliPassthroughCommand extends SlashCommand {
 
   constructor(commandName: string, order: number = 100) {
     super();
-    const normalized = commandName.startsWith('/') ? commandName : `/${commandName}`;
+    const sanitized = commandName.replace(/[\x00-\x1f\x7f]/g, '');
+    const normalized = sanitized.startsWith('/') ? sanitized : `/${sanitized}`;
     this.id = `cli-${normalized.slice(1)}`;
     this.label = normalized;
     this.description = normalized;
