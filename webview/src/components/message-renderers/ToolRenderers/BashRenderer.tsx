@@ -22,7 +22,7 @@ export function BashRenderer(props: RendererProps) {
     const name = toolUse.name;
     const description = toolUse.input?.description ?? '';
     const input = toolUse.input?.command ?? '' as string;
-    const output = toolResult?.message?.content[0].content ?? '' as string;
+    const output = toolResult?.message?.content?.[0]?.content ?? '' as string;
 
     return (
         <ToolWrapper message={props.message}>

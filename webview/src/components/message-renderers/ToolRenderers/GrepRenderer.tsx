@@ -24,7 +24,7 @@ class GrepToolResultDto {
 export function GrepRenderer(props: RendererProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const toolUse = props.toolUse as unknown as GrepToolUseDto;
-    const toolResult = props.toolResult?.message?.content[0] as GrepToolResultDto | undefined;
+    const toolResult = props.toolResult?.message?.content?.[0] as GrepToolResultDto | undefined;
 
     const name = toolUse.name;
     const pattern = toolUse.input?.pattern ?? '';

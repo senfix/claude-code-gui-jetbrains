@@ -16,7 +16,9 @@ class TodoWriteToolUseDto extends ToolUseBlockDto {
 
 export function TodoWriteRenderer(props: RendererProps) {
     const toolUse = props.toolUse as unknown as TodoWriteToolUseDto;
-    const todos = toolUse.input?.todos ?? [];
+    const todos = (toolUse.input?.todos ?? []).filter(
+        (todo): todo is TodoWriteToolUseDto['input']['todos'][number] => todo != null && typeof todo.content === 'string'
+    );
     // const toolResult = props.toolResult as BashToolResultDto | undefined;
     //
     // const name = toolUse.name;

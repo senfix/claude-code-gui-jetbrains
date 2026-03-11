@@ -62,7 +62,7 @@ export function ToolCard({ toolUse, onApprove, onDeny }: ToolCardProps) {
     },
   };
 
-  const config = statusConfig[toolUse.status];
+  const config = statusConfig[toolUse.status] ?? statusConfig.pending;
 
   return (
     <div className={`my-4 border ${config.border} ${config.bg} rounded-xl overflow-hidden backdrop-blur-sm shadow-lg ${config.pulse ? 'animate-pulse-subtle' : ''}`}>
