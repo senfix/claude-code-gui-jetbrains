@@ -1,9 +1,90 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { ROUTE_META, Route } from '@/router/routes';
 import { ArrowPathIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { usePluginUpdates } from '@/hooks/usePluginUpdates';
 import { useVersionInfo } from '@/hooks/useVersionInfo';
 import { useBridgeContext } from '@/contexts/BridgeContext';
+
+/**
+ * Sanitize HTML by stripping all tags except a safe allowlist.
+ * This prevents XSS from untrusted release notes.
+ *
+ * Strategy: bottom-up walk so that when a disallowed parent is unwrapped,
+ * its children have already been sanitized.
+ */
+const ALLOWED_TAGS = new Set([
+  'p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'code', 'pre', 'blockquote',
+  'hr', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  'dl', 'dt', 'dd', 'sup', 'sub', 'del', 'ins',
+  'img',
+]);
+const ALLOWED_ATTRS: Record<string, Set<string>> = {
+  '*': new Set(['title', 'class', 'id', 'style']),
+  'a': new Set(['href']),
+  'img': new Set(['src', 'alt', 'width', 'height']),
+};
+
+function isAllowedAttr(tag: string, attrName: string): boolean {
+  return (ALLOWED_ATTRS['*']?.has(attrName) ?? false)
+    || (ALLOWED_ATTRS[tag]?.has(attrName) ?? false);
+}
+
+function isSafeUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value) || value.startsWith('#') || value.startsWith('/');
+}
+
+function sanitizeReleaseHtml(html: string): string {
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    walkBottomUp(doc.body);
+    return doc.body.innerHTML;
+  } catch {
+    // DOMParser unavailable (e.g. certain JCEF versions) — strip all HTML as fallback
+    const temp = document.createElement('div');
+    temp.textContent = html.replace(/<[^>]*>/g, '');
+    return temp.innerHTML;
+  }
+}
+
+function walkBottomUp(node: Node): void {
+  // Recurse children first (bottom-up), snapshot to handle mutations
+  const children = Array.from(node.childNodes);
+  for (const child of children) {
+    walkBottomUp(child);
+  }
+
+  // Now process the current node itself
+  if (node.nodeType !== Node.ELEMENT_NODE) return;
+  const el = node as Element;
+  const tag = el.tagName.toLowerCase();
+
+  if (!ALLOWED_TAGS.has(tag)) {
+    // Unwrap: move (already-sanitized) children before this node, then remove it
+    while (el.firstChild) {
+      el.parentNode?.insertBefore(el.firstChild, el);
+    }
+    el.parentNode?.removeChild(el);
+    return;
+  }
+
+  // Remove disallowed attributes
+  for (const attr of Array.from(el.attributes)) {
+    if (!isAllowedAttr(tag, attr.name.toLowerCase())) {
+      el.removeAttribute(attr.name);
+    }
+  }
+
+  // Sanitize URL attributes
+  for (const urlAttr of ['href', 'src']) {
+    if (el.hasAttribute(urlAttr)) {
+      const val = el.getAttribute(urlAttr) ?? '';
+      if (!isSafeUrl(val)) {
+        el.removeAttribute(urlAttr);
+      }
+    }
+  }
+}
 
 function formatDate(cdate: string | number): string {
   const ms = typeof cdate === 'string' ? parseInt(cdate, 10) : cdate;
@@ -23,7 +104,16 @@ function formatDate(cdate: string | number): string {
 
 function extractTitle(notes: string): string | null {
   const match = notes.match(/<h[1-3][^>]*>(.*?)<\/h[1-3]>/i);
-  return match ? match[1] : null;
+  if (!match) return null;
+  try {
+    // Strip any HTML tags from the title text to prevent XSS
+    const temp = document.createElement('div');
+    temp.innerHTML = match[1];
+    return temp.textContent ?? null;
+  } catch {
+    // Fallback: strip tags with regex
+    return match[1].replace(/<[^>]*>/g, '') || null;
+  }
 }
 
 function stripTitle(notes: string): string {
@@ -58,7 +148,8 @@ function ReleaseAccordion(props: ReleaseAccordionProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   const title = extractTitle(update.notes);
-  const body = stripTitle(update.notes);
+  const rawBody = stripTitle(update.notes);
+  const body = useMemo(() => rawBody ? sanitizeReleaseHtml(rawBody) : '', [rawBody]);
 
   return (
     <div className="bg-zinc-900 rounded-lg border border-zinc-800">
