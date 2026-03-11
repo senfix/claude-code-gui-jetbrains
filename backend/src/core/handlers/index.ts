@@ -35,6 +35,7 @@ import { updatePluginHandler } from './updatePlugin';
 import { getClaudeSettingsHandler } from './getClaudeSettings';
 import { saveClaudeSettingsHandler } from './saveClaudeSettings';
 import { setModelHandler } from './setModel';
+import { getWorkingDirHandler } from './getWorkingDir';
 
 export async function handleMessage(
   connectionId: string,
@@ -146,6 +147,9 @@ export async function handleMessage(
       break;
     case 'SET_MODEL':
       setModelHandler(connectionId, message, connections, bridge);
+      break;
+    case 'GET_WORKING_DIR':
+      getWorkingDirHandler(connectionId, message, connections, bridge);
       break;
     default:
       console.error('[node-backend]', `Unknown message type: ${message.type}`);

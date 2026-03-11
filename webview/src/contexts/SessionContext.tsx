@@ -38,7 +38,7 @@ interface SessionProviderProps {
 }
 
 export function SessionProvider({ children }: SessionProviderProps) {
-  const { subscribe, isConnected } = useBridgeContext();
+  const { subscribe, send, isConnected } = useBridgeContext();
   const api = useApi();
 
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -89,6 +89,19 @@ export function SessionProvider({ children }: SessionProviderProps) {
     window.addEventListener('kotlinBridgeReady', handleBridgeReady);
     return () => window.removeEventListener('kotlinBridgeReady', handleBridgeReady);
   }, []);
+
+  // workingDir가 없는 상태로 연결되면 백엔드에서 process.cwd()를 가져옴
+  useEffect(() => {
+    if (!isConnected || workingDirectory) return;
+
+    send('GET_WORKING_DIR', {}).then((payload: { workingDir: string }) => {
+      if (payload?.workingDir) {
+        setWorkingDirectory(payload.workingDir);
+      }
+    }).catch((error: unknown) => {
+      console.error('[SessionContext] Failed to get working directory:', error);
+    });
+  }, [isConnected, workingDirectory, send, setWorkingDirectory]);
 
 
   // loadSessions - using new API
