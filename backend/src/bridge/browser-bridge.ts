@@ -20,7 +20,8 @@ export class BrowserBridge implements Bridge {
       if (process.platform === 'darwin') {
         execFile('open', [path], cb);
       } else if (process.platform === 'win32') {
-        execFile('cmd', ['/c', 'start', '', path], cb);
+        // Use 'explorer' instead of 'cmd /c start' to avoid & and special char issues
+        execFile('explorer', [path], cb);
       } else {
         execFile('xdg-open', [path], cb);
       }
@@ -59,7 +60,8 @@ export class BrowserBridge implements Bridge {
       if (process.platform === 'darwin') {
         execFile('open', [url], cb);
       } else if (process.platform === 'win32') {
-        execFile('cmd', ['/c', 'start', '', url], cb);
+        // Use rundll32 to open URL — avoids cmd.exe & character parsing issues
+        execFile('rundll32', ['url.dll,FileProtocolHandler', url], cb);
       } else {
         execFile('xdg-open', [url], cb);
       }
@@ -213,7 +215,7 @@ if ($dialog.ShowDialog() -eq 'OK') {
       if (process.platform === 'darwin') {
         execFile('open', [url], cb);
       } else if (process.platform === 'win32') {
-        execFile('cmd', ['/c', 'start', '', url], cb);
+        execFile('rundll32', ['url.dll,FileProtocolHandler', url], cb);
       } else {
         execFile('xdg-open', [url], cb);
       }
@@ -269,10 +271,11 @@ if ($dialog.ShowDialog() -eq 'OK') {
       const app = terminalApp ?? '';
 
       if (!app) {
-        // Use spawn with explicit args — no shell string interpolation
-        spawn('cmd', ['/c', 'start', 'cmd', '/k', `cd /d "${workingDir}" && claude`], {
+        // Use spawn with shell:true + proper quoting for cmd.exe start
+        spawn('cmd', ['/c', 'start', '""', 'cmd', '/k', `cd /d "${workingDir}" && claude`], {
           stdio: 'ignore',
           detached: true,
+          shell: false,
         }).unref();
       } else if (app === 'Windows Terminal' || app === 'wt') {
         spawn('wt', ['-d', workingDir, 'cmd', '/k', 'claude'], {
@@ -280,7 +283,7 @@ if ($dialog.ShowDialog() -eq 'OK') {
           detached: true,
         }).unref();
       } else if (app === 'PowerShell' || app === 'powershell') {
-        spawn('powershell', ['-NoExit', '-Command', `Set-Location '${workingDir}'; claude`], {
+        spawn('powershell', ['-NoExit', '-Command', `Set-Location -LiteralPath '${workingDir.replace(/'/g, "''")}'; claude`], {
           stdio: 'ignore',
           detached: true,
         }).unref();
@@ -298,8 +301,8 @@ if ($dialog.ShowDialog() -eq 'OK') {
       }
     } else {
       const terminal = terminalApp || 'x-terminal-emulator';
-      // Use execFile with array arguments to prevent shell injection
-      execFile(terminal, ['-e', `cd '${workingDir}' && '${claudePath}'`], (err) => {
+      // Must use 'bash -c' wrapper — terminal -e doesn't interpret shell syntax
+      execFile(terminal, ['-e', 'bash', '-c', `cd '${workingDir.replace(/'/g, "'\\''")}' && exec '${claudePath.replace(/'/g, "'\\''")}'`], (err) => {
         if (err) {
           console.error('[node-backend]', 'Failed to open terminal:', err.message);
         }

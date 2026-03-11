@@ -13,6 +13,17 @@ const ALLOWED_WS_ORIGINS = new Set([
   'https://127.0.0.1',
 ]);
 
+/** Origins that are implicitly safe (no origin header, or JCEF file:// loads) */
+function isImplicitlyAllowedOrigin(origin: string | undefined): boolean {
+  // No Origin header — e.g. same-origin requests, non-browser clients
+  if (!origin) return true;
+  // JCEF may set origin to the literal string "null" (file:// or data: origins)
+  if (origin === 'null') return true;
+  // file:// protocol — JCEF local page loads
+  if (origin.startsWith('file://')) return true;
+  return false;
+}
+
 export type MessageHandler = (
   connectionId: string,
   message: IPCMessage,
@@ -65,7 +76,7 @@ async function serveStaticFile(
     res.writeHead(200, {
       'Content-Type': contentType,
       'X-Content-Type-Options': 'nosniff',
-      'X-Frame-Options': 'DENY',
+      'X-Frame-Options': 'SAMEORIGIN',
     });
     res.end(data);
   } catch {
@@ -83,7 +94,7 @@ async function serveStaticFile(
       res.writeHead(200, {
         'Content-Type': 'text/html; charset=utf-8',
         'X-Content-Type-Options': 'nosniff',
-        'X-Frame-Options': 'DENY',
+        'X-Frame-Options': 'SAMEORIGIN',
       });
       res.end(indexData);
     } catch {
@@ -150,11 +161,11 @@ export function startWebSocketServer(
         return;
       }
 
-      // Origin 검증 — localhost만 허용
+      // Origin 검증 — localhost, file://, JCEF null origin만 허용
       const origin = request.headers.origin;
-      if (origin) {
+      if (!isImplicitlyAllowedOrigin(origin)) {
         try {
-          const url = new URL(origin);
+          const url = new URL(origin!);
           const normalized = `${url.protocol}//${url.hostname}`;
           if (!ALLOWED_WS_ORIGINS.has(normalized)) {
             console.error('[node-backend]', `WebSocket connection rejected: disallowed origin "${origin}"`);

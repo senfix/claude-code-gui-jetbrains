@@ -35,9 +35,11 @@ function buildAugmentedPath(): string {
     const nvmScript = join(resolvedNvmDir, 'nvm.sh');
     if (!existsSync(nvmScript)) throw new Error('nvm.sh not found');
 
+    // Escape single quotes in path for safe bash embedding: ' → '\''
+    const escapedNvmScript = nvmScript.replace(/'/g, "'\\''");
     const nvmDefaultBin = execFileSync(
       'bash',
-      ['-c', `source "${nvmScript}" --no-use 2>/dev/null && nvm which current 2>/dev/null`],
+      ['-c', `source '${escapedNvmScript}' --no-use 2>/dev/null && nvm which current 2>/dev/null`],
       { encoding: 'utf-8', timeout: 3000 },
     ).trim();
     if (nvmDefaultBin) {
