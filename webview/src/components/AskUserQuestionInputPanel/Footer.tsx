@@ -18,7 +18,7 @@ export const Footer = (props: Props) => {
           disabled={!canSubmit}
           className="px-3 py-1 rounded text-xs bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          {isLastTab ? 'Submit answers' : '다음'}
+          {isLastTab ? 'Submit answers' : 'Next'}
         </button>
       )}
     </div>

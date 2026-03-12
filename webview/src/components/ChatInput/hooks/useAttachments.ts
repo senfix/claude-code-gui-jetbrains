@@ -28,7 +28,7 @@ export function useAttachments(): UseAttachmentsReturn {
 
     // Validate MIME type
     if (!ATTACHMENT_LIMITS.ALLOWED_IMAGE_MIME_TYPES.includes(file.type as (typeof ATTACHMENT_LIMITS.ALLOWED_IMAGE_MIME_TYPES)[number])) {
-      setError(`지원하지 않는 파일 형식입니다: ${file.type || '알 수 없음'}`);
+      setError(`Unsupported file type: ${file.type || 'unknown'}`);
       setTimeout(() => setError(null), 3000);
       return;
     }
@@ -36,7 +36,7 @@ export function useAttachments(): UseAttachmentsReturn {
     // Validate file size
     if (file.size > ATTACHMENT_LIMITS.MAX_FILE_SIZE) {
       const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
-      setError(`파일 크기가 너무 큽니다: ${sizeMB}MB (최대 10MB)`);
+      setError(`File too large: ${sizeMB}MB (max 10MB)`);
       setTimeout(() => setError(null), 3000);
       return;
     }

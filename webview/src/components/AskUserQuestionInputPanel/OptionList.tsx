@@ -55,7 +55,7 @@ export const OptionList = (props: Props) => {
             value={otherText}
             onChange={e => onOtherTextChange(e.target.value)}
             onKeyDown={onOtherKeyDown}
-            placeholder="직접 입력..."
+            placeholder="Type your answer..."
             className="w-full px-3 py-1.5 rounded bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500/50"
           />
         </div>
