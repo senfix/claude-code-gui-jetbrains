@@ -1,22 +1,21 @@
 import { useCallback, useEffect } from 'react';
 
-const OPTION_COUNT = 3;
-
-interface UseAcceptPlanKeyboardParams {
+interface UseApprovalKeyboardParams {
+  optionCount: number;
   focusedIndex: number;
   setFocusedIndex: (updater: (prev: number) => number) => void;
   handleOptionClick: (index: number) => void;
-  handleFeedbackSubmit: () => void;
+  handleTextSubmit: () => void;
   onCancel: () => void;
 }
 
-export function useAcceptPlanKeyboard(params: UseAcceptPlanKeyboardParams) {
-  const { focusedIndex, setFocusedIndex, handleOptionClick, handleFeedbackSubmit, onCancel } = params;
+export function useApprovalKeyboard(params: UseApprovalKeyboardParams) {
+  const { optionCount, focusedIndex, setFocusedIndex, handleOptionClick, handleTextSubmit, onCancel } = params;
 
   const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleFeedbackSubmit();
+      handleTextSubmit();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       onCancel();
@@ -25,10 +24,9 @@ export function useAcceptPlanKeyboard(params: UseAcceptPlanKeyboardParams) {
       setFocusedIndex(prev => Math.max(0, prev - 1));
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      console.log(e)
-      setFocusedIndex(prev => Math.min(3, prev + 1));
+      setFocusedIndex(prev => Math.min(optionCount, prev + 1));
     }
-  }, [handleFeedbackSubmit, onCancel, setFocusedIndex]);
+  }, [optionCount, handleTextSubmit, onCancel, setFocusedIndex]);
 
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -43,11 +41,16 @@ export function useAcceptPlanKeyboard(params: UseAcceptPlanKeyboardParams) {
 
       if (isInputFocused) return;
 
-      if (e.key === '1') { e.preventDefault(); handleOptionClick(0); }
-      else if (e.key === '2') { e.preventDefault(); handleOptionClick(1); }
-      else if (e.key === '3') { e.preventDefault(); handleOptionClick(2); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); setFocusedIndex(prev => Math.max(0, prev - 1)); }
-      else if (e.key === 'ArrowDown') { e.preventDefault(); setFocusedIndex(prev => Math.min(OPTION_COUNT, prev + 1)); }
+      // 숫자 키로 옵션 직접 선택 (1-based)
+      const numKey = parseInt(e.key);
+      if (!isNaN(numKey) && numKey >= 1 && numKey <= optionCount) {
+        e.preventDefault();
+        handleOptionClick(numKey - 1);
+        return;
+      }
+
+      if (e.key === 'ArrowUp') { e.preventDefault(); setFocusedIndex(prev => Math.max(0, prev - 1)); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); setFocusedIndex(prev => Math.min(optionCount, prev + 1)); }
       else if (e.key === 'Enter') {
         e.preventDefault();
         handleOptionClick(focusedIndex);
@@ -56,7 +59,7 @@ export function useAcceptPlanKeyboard(params: UseAcceptPlanKeyboardParams) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [focusedIndex, handleOptionClick, onCancel, setFocusedIndex]);
+  }, [optionCount, focusedIndex, handleOptionClick, onCancel, setFocusedIndex]);
 
   return { handleInputKeyDown };
 }

@@ -16,7 +16,7 @@ export function ChatPage() {
   const { textareaRef, focus: focusInput } = useChatInputFocus();
   const { messages, isStreaming } = useChatStreamContext();
   const { pending: pendingUserAnswer, dismiss } = usePendingAskUserQuestion(messages, isStreaming);
-  const { pending: pendingPermission, approve: approvePermission, deny: denyPermission } = usePendingPermissions();
+  const { pending: pendingPermission, approve: approvePermission, approveForSession, deny: denyPermission } = usePendingPermissions();
   const { pending: pendingPlan } = usePendingPlanApproval();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
@@ -72,27 +72,17 @@ export function ChatPage() {
         ) : pendingPlan ? (
           <AcceptPlanPanel />
         ) : pendingPermission ? (
-          <div className="max-w-[44rem] mx-auto px-4 pb-[14px] pt-2">
-            <PermissionBanner
-              request={{
-                toolUse: {
-                  id: pendingPermission.toolUseId,
-                  name: pendingPermission.toolName,
-                  input: pendingPermission.input,
-                  status: 'pending' as any,
-                },
-                riskLevel: pendingPermission.riskLevel,
-                description: pendingPermission.description,
-              }}
-              onApprove={() => approvePermission(pendingPermission.controlRequestId)}
-              onDeny={() => denyPermission(pendingPermission.controlRequestId)}
-              onExpand={() => {}}
-            />
-          </div>
+          <PermissionBanner
+            permission={pendingPermission}
+            onApprove={() => approvePermission(pendingPermission.controlRequestId)}
+            onApproveForSession={() => approveForSession(pendingPermission.controlRequestId)}
+            onDeny={() => denyPermission(pendingPermission.controlRequestId)}
+          />
         ) : (
           <ChatInput />
         )}
       </div>
+
     </div>
   );
 }

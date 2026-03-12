@@ -1,24 +1,6 @@
 import { BridgeClient } from '../bridge/BridgeClient';
 import { PermissionType, RiskLevel, FileOperation } from '../../dto/common';
 
-interface FileChangeInfo {
-  filePath: string;
-  operation: FileOperation;
-  content?: string;
-  oldContent?: string;
-  newContent?: string;
-  oldString?: string;
-  newString?: string;
-}
-
-interface PermissionRequestPayload {
-  toolUseId: string;
-  toolName: string;
-  permissionType: PermissionType;
-  riskLevel: RiskLevel;
-  fileChange?: FileChangeInfo;
-}
-
 interface DiffAvailablePayload {
   toolUseId: string;
   filePath: string;
@@ -120,17 +102,6 @@ export class ToolsApi {
   }
 
   // Event subscriptions
-
-  /**
-   * Subscribe to permission requests
-   */
-  onPermissionRequest(
-    callback: (request: PermissionRequestPayload) => void
-  ): () => void {
-    return this.bridge.subscribe('PERMISSION_REQUEST', (message) => {
-      callback(message.payload as unknown as PermissionRequestPayload);
-    });
-  }
 
   /**
    * Subscribe to diff available events

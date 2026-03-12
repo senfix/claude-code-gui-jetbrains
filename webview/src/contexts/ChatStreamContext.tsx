@@ -283,7 +283,7 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
     chatStream.continue();
 
     // Auto-send continue message — triggers ensureClaudeProcess(--resume) in backend
-    sendMessage('Please continue from where you left off.', 'ask_before_edit');
+    sendMessage('Please continue from where you left off.', sessionRef.current.inputMode);
   }, [chatStream, sendMessage]);
 
   // retry: delegate to chatStream

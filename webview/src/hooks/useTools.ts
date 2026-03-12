@@ -4,7 +4,6 @@ import { ToolUseStatus } from '../dto/common';
 
 interface UseToolsReturn {
   toolUses: ToolUse[];
-  pendingPermissions: ToolUse[];
   addToolUse: (toolUse: Omit<ToolUse, 'status'>) => void;
   approveToolUse: (toolId: string) => void;
   denyToolUse: (toolId: string) => void;
@@ -50,11 +49,8 @@ export function useTools(): UseToolsReturn {
     return toolUses.find(t => t.id === toolId);
   }, [toolUses]);
 
-  const pendingPermissions = toolUses.filter(t => t.status === ToolUseStatus.Pending);
-
   return {
     toolUses,
-    pendingPermissions,
     addToolUse,
     approveToolUse,
     denyToolUse,

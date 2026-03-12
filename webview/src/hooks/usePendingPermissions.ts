@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useApi } from '@/contexts/ApiContext';
 import { getBridgeClient } from '@/api/bridge/BridgeClient';
+import { useSessionContext } from '@/contexts/SessionContext';
 
 export type PermissionRiskLevel = 'low' | 'medium' | 'high';
 
@@ -53,14 +54,26 @@ function generateDescription(toolName: string, input: Record<string, unknown>): 
   }
 }
 
-export function usePendingPermissions(): {
+interface UsePendingPermissionsReturn {
   pending: PendingPermission | null;
   approve: (controlRequestId: string) => void;
+  approveForSession: (controlRequestId: string) => void;
   deny: (controlRequestId: string) => void;
-} {
+}
+
+export function usePendingPermissions(): UsePendingPermissionsReturn {
   const api = useApi();
+  const { currentSessionId } = useSessionContext();
   const [requests, setRequests] = useState<PendingPermission[]>([]);
   const processedIdsRef = useRef<Set<string>>(new Set());
+  const sessionPermissionsRef = useRef<Set<string>>(new Set());
+  const apiRef = useRef(api);
+  apiRef.current = api;
+
+  // 세션 전환 시 세션 권한 캐시 클리어
+  useEffect(() => {
+    sessionPermissionsRef.current.clear();
+  }, [currentSessionId]);
 
   // Subscribe to CLI_EVENT for control_request (non-AskUserQuestion tools)
   useEffect(() => {
@@ -84,6 +97,13 @@ export function usePendingPermissions(): {
 
       if (!controlRequestId || processedIdsRef.current.has(controlRequestId)) return;
 
+      // 세션 허용된 툴이면 자동 승인
+      if (sessionPermissionsRef.current.has(toolName)) {
+        processedIdsRef.current.add(controlRequestId);
+        apiRef.current.tools.approve(toolUseId, controlRequestId);
+        return;
+      }
+
       setRequests(prev => [...prev, {
         controlRequestId,
         toolName,
@@ -101,7 +121,18 @@ export function usePendingPermissions(): {
     if (!req) return;
 
     processedIdsRef.current.add(controlRequestId);
+    api.tools.approve(req.toolUseId, controlRequestId);
+    setRequests(prev => prev.filter(r => r.controlRequestId !== controlRequestId));
+  }, [requests, api.tools]);
 
+  const approveForSession = useCallback((controlRequestId: string) => {
+    const req = requests.find(r => r.controlRequestId === controlRequestId);
+    if (!req) return;
+
+    // 세션 권한 캐시에 등록
+    sessionPermissionsRef.current.add(req.toolName);
+
+    processedIdsRef.current.add(controlRequestId);
     api.tools.approve(req.toolUseId, controlRequestId);
     setRequests(prev => prev.filter(r => r.controlRequestId !== controlRequestId));
   }, [requests, api.tools]);
@@ -111,7 +142,6 @@ export function usePendingPermissions(): {
     if (!req) return;
 
     processedIdsRef.current.add(controlRequestId);
-
     api.tools.deny(req.toolUseId, controlRequestId);
     setRequests(prev => prev.filter(r => r.controlRequestId !== controlRequestId));
   }, [requests, api.tools]);
@@ -119,5 +149,5 @@ export function usePendingPermissions(): {
   // Return the first pending request (FIFO)
   const pending = requests.length > 0 ? requests[0] : null;
 
-  return { pending, approve, deny };
+  return { pending, approve, approveForSession, deny };
 }
