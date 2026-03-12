@@ -106,13 +106,9 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
-            <h3>0.10.4 - Plan Approval UI/UX and Stability Improvements</h3>
+            <h3>0.10.5 - Localization Fix</h3>
             <ul>
-                <li>Added AcceptPlanPanel for plan approval with keyboard shortcuts (Y/N/Esc)</li>
-                <li>Added user feedback display in ExitPlanModeRenderer</li>
-                <li>Unified bottom panel positioning for AcceptPlanPanel and PermissionPanel</li>
-                <li>Moved input mode state to SessionContext with automatic Plan Mode switching</li>
-                <li>Refactored slash commands into dynamic CliPassthroughCommand abstraction</li>
+                <li>Fixed hardcoded Korean text in attachment dropdown, error messages, and question panels to English (#4)</li>
             </ul>
         """.trimIndent()
     }
