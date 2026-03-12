@@ -1,21 +1,39 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChatInput } from './ChatInput';
 import { SessionHeader } from './SessionHeader';
 import { ChatMessageArea } from './ChatMessageArea';
 import { PermissionBanner } from './PermissionBanner';
 import { AskUserQuestionInputPanel } from './AskUserQuestionInputPanel';
+import { AcceptPlanPanel } from './AcceptPlanPanel';
 import { UpdateBanner } from './UpdateBanner';
 import { useChatInputFocus } from '../contexts/ChatInputFocusContext';
 import { useChatStreamContext } from '../contexts/ChatStreamContext';
+import { useSessionContext } from '../contexts/SessionContext';
 import { usePendingAskUserQuestion } from '../hooks/usePendingAskUserQuestion';
 import { usePendingPermissions } from '../hooks/usePendingPermissions';
+import { usePendingPlanApproval } from '../hooks/usePendingPlanApproval';
+import { InputModeValues } from '../types/chatInput';
 
 export function ChatPanel() {
   const { textareaRef, focus: focusInput } = useChatInputFocus();
-  const { messages, isStreaming } = useChatStreamContext();
+  const { messages, isStreaming, stop } = useChatStreamContext();
+  const { setInputMode } = useSessionContext();
   const { pending: pendingUserAnswer, dismiss } = usePendingAskUserQuestion(messages, isStreaming);
   const { pending: pendingPermission, approve: approvePermission, deny: denyPermission } = usePendingPermissions();
+  const { pending: pendingPlan, approve: approvePlan, deny: denyPlan } = usePendingPlanApproval();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const bottomPanelRef = useRef<HTMLDivElement>(null);
+  const [bottomPadding, setBottomPadding] = useState(144); // pb-36 = 144px
+
+  useEffect(() => {
+    const el = bottomPanelRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setBottomPadding(entry.contentRect.height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // 빈 영역 클릭 시 textarea로 포커스 이동
   // mousedown 시점에 확인해야 포커스 이동 전 activeElement를 비교할 수 있음
@@ -42,17 +60,39 @@ export function ChatPanel() {
       <UpdateBanner />
 
       {/* Messages Area */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto w-full h-screen pt-10 pb-36 bg-neutral-900 z-0">
-        <ChatMessageArea isStreaming={isStreaming && !pendingUserAnswer && !pendingPermission} scrollContainerRef={scrollContainerRef} />
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto w-full h-screen pt-10 bg-neutral-900 z-0" style={{ paddingBottom: bottomPadding }}>
+        <ChatMessageArea isStreaming={isStreaming && !pendingUserAnswer && !pendingPlan && !pendingPermission} scrollContainerRef={scrollContainerRef} />
       </div>
 
       {/* Input Area */}
-      <div className={`${pendingUserAnswer ? 'relative' : 'fixed'} w-full bottom-0 z-10 ${pendingUserAnswer ? '-mt-36' : ''}`}>
+      <div ref={bottomPanelRef} className={`${pendingUserAnswer ? 'relative' : 'fixed'} w-full bottom-0 z-10 ${pendingUserAnswer ? '-mt-36' : ''}`}>
         {pendingUserAnswer ? (
           <AskUserQuestionInputPanel
             toolUse={pendingUserAnswer.toolUse}
             controlRequestId={pendingUserAnswer.controlRequestId}
             onDismiss={() => dismiss(pendingUserAnswer.toolUse.id)}
+          />
+        ) : pendingPlan ? (
+          <AcceptPlanPanel
+            onAutoAccept={() => {
+              approvePlan(pendingPlan.controlRequestId);
+              setInputMode(InputModeValues.AUTO_EDIT);
+            }}
+            onManualApprove={() => {
+              approvePlan(pendingPlan.controlRequestId);
+              setInputMode(InputModeValues.ASK_BEFORE_EDIT);
+            }}
+            onKeepPlanning={() => {
+              denyPlan(pendingPlan.controlRequestId);
+              stop();
+            }}
+            onFeedback={(text) => {
+              denyPlan(pendingPlan.controlRequestId, text);
+            }}
+            onCancel={() => {
+              denyPlan(pendingPlan.controlRequestId);
+              stop();
+            }}
           />
         ) : pendingPermission ? (
           <div className="max-w-[44rem] mx-auto px-4 pb-[14px] pt-2">

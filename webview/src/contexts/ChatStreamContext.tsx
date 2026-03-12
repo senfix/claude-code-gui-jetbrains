@@ -124,12 +124,9 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
           prePlanModeRef.current = session.inputMode;
         }
         session.setInputMode(InputModeValues.PLAN);
-      } else if (toolName === 'ExitPlanMode') {
-        // 저장해둔 이전 모드로 복원 (없으면 ask_before_edit)
-        const restoreMode = prePlanModeRef.current ?? InputModeValues.ASK_BEFORE_EDIT;
-        prePlanModeRef.current = null;
-        session.setInputMode(restoreMode);
       }
+      // ExitPlanMode는 여기서 처리하지 않음.
+      // 사용자가 AcceptPlanPanel에서 승인/거부를 선택하는 시점에 ChatPanel에서 모드를 변경한다.
     },
   });
 

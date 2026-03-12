@@ -72,7 +72,8 @@ export function usePendingPermissions(): {
       const request = cliEvent?.request;
 
       // Skip AskUserQuestion (handled by usePendingAskUserQuestion)
-      if (!request || request.subtype !== 'can_use_tool' || request.tool_name === 'AskUserQuestion') {
+      // Skip ExitPlanMode (handled by usePendingPlanApproval)
+      if (!request || request.subtype !== 'can_use_tool' || request.tool_name === 'AskUserQuestion' || request.tool_name === 'ExitPlanMode') {
         return;
       }
 

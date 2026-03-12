@@ -29,7 +29,7 @@ export function toolResponseHandler(
       request_id: controlRequestId,
       response: approved
         ? { behavior: 'allow', updatedInput: message.payload?.updatedInput }
-        : { behavior: 'deny', message: 'User declined to answer' },
+        : { behavior: 'deny', message: (message.payload?.reason as string) || 'User declined to answer' },
     };
     sendControlResponseToProcess(connections, sessionId, response);
     console.error('[node-backend]', `CONTROL_RESPONSE sent for request ${controlRequestId} (approved: ${approved})`);

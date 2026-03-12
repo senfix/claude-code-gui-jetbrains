@@ -49,11 +49,12 @@ export class ToolsApi {
   /**
    * Deny a tool use request
    */
-  async deny(toolUseId: string, controlRequestId?: string): Promise<void> {
+  async deny(toolUseId: string, controlRequestId?: string, reason?: string): Promise<void> {
     await this.bridge.request('TOOL_RESPONSE', {
       toolUseId,
       approved: false,
       ...(controlRequestId && { controlRequestId }),
+      ...(reason && { reason }),
     });
   }
 
