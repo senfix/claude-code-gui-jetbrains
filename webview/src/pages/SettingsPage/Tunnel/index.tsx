@@ -58,7 +58,7 @@ export function TunnelSettings() {
           </div>
         )}
         <SettingRow
-          label="Remote Tunnel"
+          label="Remote Tunnel (Unofficial)"
           description="Expose your local server via cloudflared for remote access. No account required. If cloudflared is not installed, it will be downloaded automatically."
         >
           <ToggleSwitch

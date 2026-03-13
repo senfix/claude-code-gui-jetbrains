@@ -12,7 +12,7 @@ export function TunnelButton() {
       <button
         onClick={() => setModalOpen(true)}
         className="p-1 rounded transition-colors hover:bg-zinc-800"
-        title="Remote Tunnel"
+        title="Remote Tunnel (Unofficial)"
       >
         <ComputerDesktopIcon
           className={`w-4 h-4 ${tunnelEnabled ? 'text-green-400' : 'text-zinc-400 hover:text-zinc-100'}`}

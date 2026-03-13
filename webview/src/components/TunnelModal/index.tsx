@@ -89,7 +89,7 @@ export function TunnelModal(props: Props) {
           {/* Tunnel toggle */}
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-zinc-200">Remote Tunnel</div>
+              <div className="text-sm text-zinc-200">Remote Tunnel (Unofficial)</div>
               <div className="text-xs text-zinc-500">Expose via cloudflared</div>
             </div>
             <ToggleSwitch
