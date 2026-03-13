@@ -1,6 +1,6 @@
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from 'http';
 import { readFile } from 'fs/promises';
-import { join, extname, resolve } from 'path';
+import { join, extname, resolve, sep } from 'path';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { ConnectionManager } from './connection-manager';
 import type { Bridge } from '../bridge/bridge-interface';
@@ -63,7 +63,7 @@ async function serveStaticFile(
 
   // Prevent path traversal — resolved path must stay within webviewDir
   const resolvedWebviewDir = resolve(webviewDir);
-  if (!filePath.startsWith(resolvedWebviewDir + '/') && filePath !== resolvedWebviewDir) {
+  if (!filePath.startsWith(resolvedWebviewDir + sep) && filePath !== resolvedWebviewDir) {
     res.writeHead(403);
     res.end('Forbidden');
     return;
