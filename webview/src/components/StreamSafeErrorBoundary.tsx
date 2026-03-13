@@ -23,19 +23,26 @@ interface Props {
 interface State {
   hasError: boolean;
   errorRenderKey: string | number | null;
+  /** getDerivedStateFromError 직후 플래그 — getDerivedStateFromProps에서 errorRenderKey 확정 전 리셋 방지 */
+  pendingError: boolean;
 }
 
 export class StreamSafeErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false, errorRenderKey: null };
+    this.state = { hasError: false, errorRenderKey: null, pendingError: false };
   }
 
   static getDerivedStateFromError(): Partial<State> {
-    return { hasError: true };
+    return { hasError: true, pendingError: true };
   }
 
   static getDerivedStateFromProps(props: Props, state: State): Partial<State> | null {
+    // 에러 직후: errorRenderKey를 현재 renderKey로 확정 (리셋 방지)
+    if (state.pendingError) {
+      return { pendingError: false, errorRenderKey: props.renderKey };
+    }
+    // renderKey가 변경되면 에러 상태 리셋 (새 데이터로 재시도)
     if (state.hasError && props.renderKey !== state.errorRenderKey) {
       return { hasError: false, errorRenderKey: null };
     }
@@ -59,8 +66,6 @@ export class StreamSafeErrorBoundary extends Component<Props, State> {
       errors.length,
       error.message,
     );
-
-    this.setState({ errorRenderKey: this.props.renderKey });
   }
 
   render() {
