@@ -7,3 +7,5 @@ export * from './getSessionsList';
 export * from './loadSessionMessages';
 export * from './getProjectsList';
 export * from './detectTerminals';
+export * from './tunnel-manager';
+export * from './sleep-guard';

@@ -36,6 +36,11 @@ import { getClaudeSettingsHandler } from './getClaudeSettings';
 import { saveClaudeSettingsHandler } from './saveClaudeSettings';
 import { setModelHandler } from './setModel';
 import { getWorkingDirHandler } from './getWorkingDir';
+import { tunnelStartHandler } from './tunnelStart';
+import { tunnelStopHandler } from './tunnelStop';
+import { getTunnelStatusHandler } from './getTunnelStatus';
+import { sleepGuardEnableHandler } from './sleepGuardEnable';
+import { sleepGuardDisableHandler } from './sleepGuardDisable';
 
 export async function handleMessage(
   connectionId: string,
@@ -150,6 +155,21 @@ export async function handleMessage(
       break;
     case 'GET_WORKING_DIR':
       getWorkingDirHandler(connectionId, message, connections, bridge);
+      break;
+    case 'TUNNEL_START':
+      await tunnelStartHandler(connectionId, message, connections, bridge);
+      break;
+    case 'TUNNEL_STOP':
+      await tunnelStopHandler(connectionId, message, connections, bridge);
+      break;
+    case 'GET_TUNNEL_STATUS':
+      await getTunnelStatusHandler(connectionId, message, connections, bridge);
+      break;
+    case 'SLEEP_GUARD_ENABLE':
+      await sleepGuardEnableHandler(connectionId, message, connections, bridge);
+      break;
+    case 'SLEEP_GUARD_DISABLE':
+      await sleepGuardDisableHandler(connectionId, message, connections, bridge);
       break;
     default:
       console.error('[node-backend]', `Unknown message type: ${message.type}`);

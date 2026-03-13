@@ -9,6 +9,7 @@ import {
   ArrowLeftIcon,
   ArrowsRightLeftIcon,
   ArrowUpCircleIcon,
+  GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
 
@@ -27,6 +28,7 @@ export enum IconName {
   ARROW_LEFT = 'ArrowLeftIcon',
   ARROWS_RIGHT_LEFT = 'ArrowsRightLeftIcon',
   ARROW_UP_CIRCLE = 'ArrowUpCircleIcon',
+  GLOBE_ALT = 'GlobeAltIcon',
 }
 
 /**
@@ -42,6 +44,7 @@ export enum Route {
   SETTINGS_PERMISSIONS = 'settings/permissions',
   SETTINGS_CLI = 'settings/cli',
   SETTINGS_ADVANCED = 'settings/advanced',
+  SETTINGS_TUNNEL = 'settings/tunnel',
   SETTINGS_USAGE = 'settings/usage',
   SETTINGS_RELEASES = 'settings/releases',
   SETTINGS_ABOUT = 'settings/about',
@@ -110,6 +113,12 @@ export const ROUTE_META: Record<Route, RouteMeta> = {
     icon: IconName.ADJUSTMENTS,
     description: 'Debug and advanced options'
   },
+  [Route.SETTINGS_TUNNEL]: {
+    path: '/settings/tunnel',
+    label: 'Tunnel',
+    icon: IconName.GLOBE_ALT,
+    description: 'Remote tunnel and sleep prevention'
+  },
   [Route.SETTINGS_USAGE]: {
     path: '/settings/usage',
     label: 'Usage',
@@ -144,6 +153,7 @@ export const ICON_COMPONENTS: Record<IconName, ComponentType<SVGProps<SVGSVGElem
   [IconName.ARROW_LEFT]: ArrowLeftIcon,
   [IconName.ARROWS_RIGHT_LEFT]: ArrowsRightLeftIcon,
   [IconName.ARROW_UP_CIRCLE]: ArrowUpCircleIcon,
+  [IconName.GLOBE_ALT]: GlobeAltIcon,
 };
 
 /**
@@ -229,6 +239,7 @@ export const SETTINGS_SUB_ROUTES: Route[] = [
   Route.SETTINGS_PERMISSIONS,
   Route.SETTINGS_CLI,
   Route.SETTINGS_ADVANCED,
+  Route.SETTINGS_TUNNEL,
   Route.SETTINGS_USAGE,
   Route.SETTINGS_RELEASES,
   Route.SETTINGS_ABOUT,

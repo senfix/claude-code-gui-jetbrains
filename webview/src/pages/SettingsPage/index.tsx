@@ -5,6 +5,7 @@ import { AppearanceSettings } from './Appearance';
 import { PermissionsSettings } from './Permissions';
 import { CliSettings } from './Cli';
 import { AdvancedSettings } from './Advanced';
+import { TunnelSettings } from './Tunnel';
 import { AboutSettings } from './About';
 import { UsageSettings } from './Usage';
 import { ReleasesSettings } from './Releases';
@@ -27,6 +28,8 @@ export function SettingsPage() {
         return <CliSettings />;
       case Route.SETTINGS_ADVANCED:
         return <AdvancedSettings />;
+      case Route.SETTINGS_TUNNEL:
+        return <TunnelSettings />;
       case Route.SETTINGS_ABOUT:
         return <AboutSettings />;
       case Route.SETTINGS_USAGE:

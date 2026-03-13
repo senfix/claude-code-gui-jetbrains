@@ -4,6 +4,7 @@ import { BrowserBridge } from './bridge/browser-bridge';
 import { JetBrainsBridge } from './bridge/jetbrains-bridge';
 import { handleMessage } from './core/handlers/index';
 import { watchClaudeSettingsFile, stopWatchingClaudeSettingsFile } from './core/features/claude-settings';
+import { restoreTunnelState } from './core/features/tunnel-manager';
 import { isJetBrainsMode, serverPort, webviewDir } from './config/environment';
 import { initLogger, getLogger } from './logging';
 import { LogWebSocketServer } from './logging/log-ws';
@@ -99,6 +100,9 @@ async function main() {
     `Server started in ${isJetBrainsMode ? 'JetBrains' : 'browser'} mode on port ${port}`,
     webviewDir ? `(webviewDir: ${webviewDir})` : '',
   );
+
+  // Restore tunnel state from previous session (if cloudflared is still running)
+  restoreTunnelState();
 
   // Start watching Claude settings file for external changes
   watchClaudeSettingsFile((settings) => {

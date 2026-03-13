@@ -8,7 +8,11 @@ export default defineConfig({
   plugins: [react()],
   base: '/',
   server: {
+    host: true,
     port: 5173,
+    allowedHosts: [
+      '.trycloudflare.com',
+    ],
     proxy: {
       // WebSocket 요청을 Node.js 백엔드로 프록시
       '/ws': {

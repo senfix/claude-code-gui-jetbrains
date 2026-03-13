@@ -14,6 +14,10 @@ const ALLOWED_WS_ORIGINS = new Set([
   'https://127.0.0.1',
 ]);
 
+const ALLOWED_TUNNEL_SUFFIXES = [
+  '.trycloudflare.com',
+];
+
 /** Origins that are implicitly safe (no origin header, or JCEF file:// loads) */
 function isImplicitlyAllowedOrigin(origin: string | undefined): boolean {
   // No Origin header — e.g. same-origin requests, non-browser clients
@@ -31,7 +35,8 @@ function validateOrigin(origin: string | undefined): boolean {
   try {
     const url = new URL(origin!);
     const normalized = `${url.protocol}//${url.hostname}`;
-    return ALLOWED_WS_ORIGINS.has(normalized);
+    if (ALLOWED_WS_ORIGINS.has(normalized)) return true;
+    return ALLOWED_TUNNEL_SUFFIXES.some((suffix) => url.hostname.endsWith(suffix));
   } catch {
     return false;
   }

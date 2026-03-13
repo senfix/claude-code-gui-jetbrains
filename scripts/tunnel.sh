@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# tunnel.sh - ngrok을 이용해 로컬 백엔드를 외부에 노출
-# 사용법: ./scripts/tunnel.sh
+# tunnel2.sh - cloudflared를 이용해 로컬 백엔드를 외부에 노출
+# 사용법: ./scripts/tunnel2.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -33,13 +33,14 @@ fail()  { echo -e "${RED}[tunnel]${RESET} $*"; exit 1; }
 
 # ── 종료 시 정리할 PID 추적 ──────────────────────────
 BACKEND_PID=""
-NGROK_PID=""
+CLOUDFLARED_PID=""
 STARTED_BACKEND=false
+LOG_FILE="/tmp/cloudflared-tunnel.log"
 
 cleanup() {
-  if [ -n "$NGROK_PID" ] && kill -0 "$NGROK_PID" 2>/dev/null; then
-    info "ngrok 종료 중 (PID: ${NGROK_PID})..."
-    kill "$NGROK_PID" 2>/dev/null || true
+  if [ -n "$CLOUDFLARED_PID" ] && kill -0 "$CLOUDFLARED_PID" 2>/dev/null; then
+    info "cloudflared 종료 중 (PID: ${CLOUDFLARED_PID})..."
+    kill "$CLOUDFLARED_PID" 2>/dev/null || true
   fi
   if [ "$STARTED_BACKEND" = true ] && [ -n "$BACKEND_PID" ] && kill -0 "$BACKEND_PID" 2>/dev/null; then
     info "백엔드 종료 중 (PID: ${BACKEND_PID})..."
@@ -48,13 +49,65 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# ── 1. ngrok 설치 확인 ───────────────────────────────
-if ! command -v ngrok &>/dev/null; then
-  fail "ngrok이 설치되어 있지 않습니다.
-  설치 방법:
-    brew install ngrok    (macOS)
-    https://ngrok.com/download  (기타)
-  설치 후 다시 실행해주세요."
+# ── 1. cloudflared 설치 확인 (없으면 자동 설치) ──────
+CLOUDFLARED_BIN=""
+
+if command -v cloudflared &>/dev/null; then
+  CLOUDFLARED_BIN="cloudflared"
+else
+  LOCAL_BIN="$ROOT/.local/bin/cloudflared"
+  if [ -x "$LOCAL_BIN" ]; then
+    CLOUDFLARED_BIN="$LOCAL_BIN"
+  else
+    info "cloudflared가 설치되어 있지 않습니다. 자동 설치를 시작합니다..."
+
+    if command -v brew &>/dev/null; then
+      # brew 있으면 brew로 설치
+      info "Homebrew로 cloudflared를 설치합니다..."
+      brew install cloudflared
+      CLOUDFLARED_BIN="cloudflared"
+    else
+      # brew 없으면 바이너리 직접 다운로드
+      OS="$(uname -s)"
+      ARCH="$(uname -m)"
+      DOWNLOAD_URL=""
+
+      case "$OS" in
+        Darwin)
+          case "$ARCH" in
+            arm64) DOWNLOAD_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-arm64.tgz" ;;
+            x86_64) DOWNLOAD_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz" ;;
+          esac
+          ;;
+        Linux)
+          case "$ARCH" in
+            x86_64) DOWNLOAD_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64" ;;
+            aarch64|arm64) DOWNLOAD_URL="https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64" ;;
+          esac
+          ;;
+      esac
+
+      if [ -z "$DOWNLOAD_URL" ]; then
+        fail "지원하지 않는 OS/아키텍처입니다: ${OS}/${ARCH}
+  수동 설치: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/"
+      fi
+
+      mkdir -p "$ROOT/.local/bin"
+
+      if [[ "$DOWNLOAD_URL" == *.tgz ]]; then
+        info "다운로드 중: ${DOWNLOAD_URL}"
+        curl -fsSL "$DOWNLOAD_URL" | tar -xz -C "$ROOT/.local/bin"
+      else
+        info "다운로드 중: ${DOWNLOAD_URL}"
+        curl -fsSL -o "$LOCAL_BIN" "$DOWNLOAD_URL"
+      fi
+
+      chmod +x "$LOCAL_BIN"
+      CLOUDFLARED_BIN="$LOCAL_BIN"
+    fi
+
+    ok "cloudflared 설치 완료"
+  fi
 fi
 
 # ── 2. 포트 점유 확인 & 백엔드 시작 ──────────────────
@@ -115,20 +168,17 @@ else
   fi
 fi
 
-# ── 4. ngrok 실행 ────────────────────────────────────
-info "ngrok 터널을 시작합니다..."
+# ── 4. cloudflared 실행 ──────────────────────────────
+info "cloudflared 터널을 시작합니다..."
 
-ngrok http "$TUNNEL_PORT" --request-header-remove "Origin" --log=stdout --log-format=json > /tmp/ngrok-tunnel.log 2>&1 &
-NGROK_PID=$!
+"$CLOUDFLARED_BIN" tunnel --protocol http2 --url "http://localhost:${TUNNEL_PORT}" > "$LOG_FILE" 2>&1 &
+CLOUDFLARED_PID=$!
 
-# ngrok API에서 URL 추출 (최대 10초 대기)
-info "ngrok 터널 URL 확인 중..."
+# stderr 로그에서 URL 추출 (최대 15초 대기)
+info "cloudflared 터널 URL 확인 중..."
 TUNNEL_URL=""
-for i in $(seq 1 20); do
-  TUNNEL_URL=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null \
-    | grep -o '"public_url":"https://[^"]*"' \
-    | head -1 \
-    | cut -d'"' -f4) || true
+for i in $(seq 1 30); do
+  TUNNEL_URL=$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' "$LOG_FILE" 2>/dev/null | head -1) || true
 
   if [ -n "$TUNNEL_URL" ]; then
     break
@@ -137,7 +187,7 @@ for i in $(seq 1 20); do
 done
 
 if [ -z "$TUNNEL_URL" ]; then
-  fail "ngrok 터널 URL을 가져올 수 없습니다. ngrok 상태를 확인해주세요."
+  fail "cloudflared 터널 URL을 가져올 수 없습니다. 로그를 확인해주세요: $LOG_FILE"
 fi
 
 # ── 5. URL + QR 코드 출력 ────────────────────────────
@@ -148,7 +198,6 @@ echo -e "${BOLD}============================================${RESET}"
 echo ""
 echo -e "  ${CYAN}URL:${RESET} ${BOLD}${TUNNEL_URL}${RESET}"
 echo -e "  ${CYAN}Local:${RESET} http://localhost:${TUNNEL_PORT}"
-echo -e "  ${CYAN}ngrok Dashboard:${RESET} http://localhost:4040"
 echo ""
 
 # QR 코드 출력 (qrencode 우선, 없으면 npx qrcode)
@@ -168,5 +217,5 @@ echo ""
 echo -e "${YELLOW}  Ctrl+C로 터널을 종료합니다.${RESET}"
 echo ""
 
-# ngrok이 종료될 때까지 대기 (포그라운드 유지)
-wait "$NGROK_PID" 2>/dev/null || true
+# cloudflared가 종료될 때까지 대기 (포그라운드 유지)
+wait "$CLOUDFLARED_PID" 2>/dev/null || true
