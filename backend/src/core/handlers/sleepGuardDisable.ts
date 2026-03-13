@@ -15,7 +15,7 @@ export async function sleepGuardDisableHandler(
       requestId: message.requestId,
       status: 'ok',
     });
-    connections.broadcastToAll('SLEEP_GUARD_STATUS', { enabled: false, onlyOnPower: true });
+    connections.broadcastToAll('SLEEP_GUARD_STATUS', { enabled: false });
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     connections.sendTo(connectionId, 'ACK', {

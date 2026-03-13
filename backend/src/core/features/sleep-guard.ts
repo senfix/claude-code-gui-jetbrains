@@ -5,24 +5,41 @@ const execAsync = promisify(exec);
 
 export interface SleepGuardStatus {
   enabled: boolean;
-  onlyOnPower: boolean;
   platform: string;
 }
 
 let sleepGuardEnabled = false;
-let sleepOnlyOnPower = true;
-let inhibitProcess: ChildProcess | null = null; // Linux only
+let inhibitProcess: ChildProcess | null = null;
 
-export async function enableSleepGuard(onlyOnPower: boolean): Promise<void> {
+export async function enableSleepGuard(): Promise<void> {
   const platform = process.platform;
-  sleepOnlyOnPower = onlyOnPower;
 
   try {
     if (platform === 'darwin') {
-      const pmsetFlag = onlyOnPower ? '-c' : '-a';
-      await execAsync(
-        `osascript -e 'do shell script "pmset ${pmsetFlag} disablesleep 1" with administrator privileges'`
-      );
+      if (inhibitProcess) {
+        sleepGuardEnabled = true;
+        return;
+      }
+      // caffeinate -s: prevent system sleep (including lid close)
+      // caffeinate -i: prevent idle sleep
+      const proc = spawn('caffeinate', ['-s', '-i'], {
+        stdio: 'ignore',
+        detached: true,
+      });
+      proc.unref();
+      inhibitProcess = proc;
+
+      proc.on('error', (err) => {
+        console.error('[node-backend]', 'caffeinate error:', err);
+        inhibitProcess = null;
+        sleepGuardEnabled = false;
+      });
+
+      proc.on('exit', (code, signal) => {
+        console.error('[node-backend]', `caffeinate exited code=${code} signal=${signal}`);
+        inhibitProcess = null;
+        sleepGuardEnabled = false;
+      });
     } else if (platform === 'linux') {
       if (inhibitProcess) {
         // Already inhibiting
@@ -59,9 +76,7 @@ export async function enableSleepGuard(onlyOnPower: boolean): Promise<void> {
       });
     } else if (platform === 'win32') {
       await execAsync('powercfg /change standby-timeout-ac 0');
-      if (!onlyOnPower) {
-        await execAsync('powercfg /change standby-timeout-dc 0');
-      }
+      await execAsync('powercfg /change standby-timeout-dc 0');
     } else {
       console.error('[node-backend]', `enableSleepGuard: unsupported platform ${platform}`);
       return;
@@ -79,9 +94,14 @@ export async function disableSleepGuard(): Promise<void> {
 
   try {
     if (platform === 'darwin') {
-      await execAsync(
-        `osascript -e 'do shell script "pmset disablesleep 0" with administrator privileges'`
-      );
+      if (inhibitProcess) {
+        try {
+          inhibitProcess.kill('SIGTERM');
+        } catch (err) {
+          console.error('[node-backend]', 'Failed to kill caffeinate process:', err);
+        }
+        inhibitProcess = null;
+      }
     } else if (platform === 'linux') {
       if (inhibitProcess) {
         try {
@@ -93,9 +113,7 @@ export async function disableSleepGuard(): Promise<void> {
       }
     } else if (platform === 'win32') {
       await execAsync('powercfg /change standby-timeout-ac 30');
-      if (!sleepOnlyOnPower) {
-        await execAsync('powercfg /change standby-timeout-dc 15');
-      }
+      await execAsync('powercfg /change standby-timeout-dc 15');
     } else {
       console.error('[node-backend]', `disableSleepGuard: unsupported platform ${platform}`);
       return;
@@ -115,31 +133,16 @@ export async function disableSleepGuard(): Promise<void> {
 export async function restoreSleepGuardState(): Promise<void> {
   const os = process.platform;
   try {
-    if (os === 'darwin') {
-      const { stdout } = await execAsync('pmset -g');
-      // pmset -g output contains "disablesleep   1" when active
-      const match = /disablesleep\s+(\d)/.exec(stdout);
-      if (match && match[1] === '1') {
-        sleepGuardEnabled = true;
-        // Check if -c only or -a by testing battery settings
-        const { stdout: batteryOut } = await execAsync('pmset -g custom').catch(() => ({ stdout: '' }));
-        const batterySection = batteryOut.split('Battery Power:')[1] ?? '';
-        const batteryMatch = /disablesleep\s+(\d)/.exec(batterySection);
-        sleepOnlyOnPower = !batteryMatch || batteryMatch[1] === '0';
-        console.error('[node-backend]', `Restored sleep guard state: enabled=true onlyOnPower=${sleepOnlyOnPower}`);
-      }
-    } else if (os === 'win32') {
+    // darwin & linux: process-based, doesn't survive backend restart
+    if (os === 'win32') {
       const { stdout } = await execAsync('powercfg /query SCHEME_CURRENT SUB_SLEEP STANDBYIDLE');
       // If AC timeout is 0x00000000, sleep is disabled
       const acMatch = /Current AC Power Setting Index:\s*0x([0-9a-fA-F]+)/.exec(stdout);
       if (acMatch && parseInt(acMatch[1], 16) === 0) {
         sleepGuardEnabled = true;
-        const dcMatch = /Current DC Power Setting Index:\s*0x([0-9a-fA-F]+)/.exec(stdout);
-        sleepOnlyOnPower = !dcMatch || parseInt(dcMatch[1], 16) !== 0;
-        console.error('[node-backend]', `Restored sleep guard state: enabled=true onlyOnPower=${sleepOnlyOnPower}`);
+        console.error('[node-backend]', 'Restored sleep guard state: enabled=true');
       }
     }
-    // Linux: systemd-inhibit process doesn't survive backend restart, no restore needed
   } catch {
     // ignore — unable to determine system state
   }
@@ -148,7 +151,6 @@ export async function restoreSleepGuardState(): Promise<void> {
 export function getSleepGuardStatus(): SleepGuardStatus {
   return {
     enabled: sleepGuardEnabled,
-    onlyOnPower: sleepOnlyOnPower,
     platform: process.platform,
   };
 }

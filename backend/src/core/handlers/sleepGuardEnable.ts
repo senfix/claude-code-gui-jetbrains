@@ -9,14 +9,13 @@ export async function sleepGuardEnableHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  const onlyOnPower = message.payload?.onlyOnPower !== false;
   try {
-    await enableSleepGuard(onlyOnPower);
+    await enableSleepGuard();
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,
       status: 'ok',
     });
-    connections.broadcastToAll('SLEEP_GUARD_STATUS', { enabled: true, onlyOnPower });
+    connections.broadcastToAll('SLEEP_GUARD_STATUS', { enabled: true });
   } catch (err) {
     const error = err instanceof Error ? err.message : String(err);
     connections.sendTo(connectionId, 'ACK', {

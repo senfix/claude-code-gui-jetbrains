@@ -14,7 +14,6 @@ export function TunnelSettings() {
   const [tunnelLoading, setTunnelLoading] = useState(false);
   const [preventSleep, setPreventSleep] = useState(false);
   const [sleepLoading, setSleepLoading] = useState(false);
-  const [onlyOnPower, setOnlyOnPower] = useState(true);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -44,7 +43,6 @@ export function TunnelSettings() {
         setTunnelEnabled(p.tunnel.enabled);
         setTunnelUrl(p.tunnel.url ?? null);
         setPreventSleep(p.sleepGuard.enabled);
-        setOnlyOnPower(p.sleepGuard.onlyOnPower);
       }
     }).catch(() => {});
   }, [send]);
@@ -59,7 +57,6 @@ export function TunnelSettings() {
     const unsubSleep = subscribe('SLEEP_GUARD_STATUS', (msg) => {
       const p = msg.payload as Record<string, unknown>;
       setPreventSleep(p.enabled as boolean);
-      setOnlyOnPower((p.onlyOnPower as boolean) ?? true);
       setSleepLoading(false);
     });
     return () => { unsubTunnel(); unsubSleep(); };
@@ -101,7 +98,7 @@ export function TunnelSettings() {
     if (checked) {
       setSleepLoading(true);
       try {
-        const res = await send('SLEEP_GUARD_ENABLE', { onlyOnPower });
+        const res = await send('SLEEP_GUARD_ENABLE', {});
         if (res.payload.status === 'error') {
           setError(res.payload.error as string);
           setSleepLoading(false);
@@ -112,26 +109,6 @@ export function TunnelSettings() {
     } else {
       await send('SLEEP_GUARD_DISABLE', {}).catch(() => {});
     }
-  };
-
-  const handleOnlyOnPowerToggle = async (checked: boolean) => {
-    setError(null);
-    // 이미 sleep guard가 활성 상태이므로, 설정 변경을 위해 재활성화
-    if (preventSleep) {
-      setSleepLoading(true);
-      try {
-        const res = await send('SLEEP_GUARD_ENABLE', { onlyOnPower: checked });
-        if (res.payload.status === 'error') {
-          setError(res.payload.error as string);
-          setSleepLoading(false);
-          return; // 실패 시 토글 원복 (상태를 바꾸지 않음)
-        }
-      } catch {
-        setSleepLoading(false);
-        return;
-      }
-    }
-    setOnlyOnPower(checked);
   };
 
   return (
@@ -164,24 +141,24 @@ export function TunnelSettings() {
               </svg>
               <span>Establishing tunnel connection... ({elapsedSec}s)</span>
             </div>
-            <p className="text-xs text-zinc-600">This typically takes 10–15 seconds</p>
+            <p className="text-xs text-zinc-600">This typically takes 10–15 seconds (If installation is required, it takes about 3 mins.)</p>
           </div>
         )}
 
         {tunnelEnabled && tunnelUrl && (
           <div className="py-4 border-b border-zinc-800">
             <div className="flex items-center gap-2 mb-4">
-              <span className="font-mono text-sm text-zinc-300 flex-1 truncate">{tunnelUrl}</span>
+              <span className="font-mono text-[11px] text-zinc-300 flex-1 truncate">{tunnelUrl}</span>
               <button onClick={handleCopy} className="flex-shrink-0">
                 {copied
-                  ? <ClipboardDocumentCheckIcon className="w-4 h-4 text-green-400" />
-                  : <ClipboardDocumentIcon className="w-4 h-4 text-zinc-400 hover:text-zinc-200 cursor-pointer" />
+                  ? <ClipboardDocumentCheckIcon className="w-3 h-3 text-green-400" />
+                  : <ClipboardDocumentIcon className="w-3 h-3 text-zinc-400 hover:text-zinc-200 cursor-pointer" />
                 }
               </button>
             </div>
-            <div className="flex justify-center">
+            <div className="flex justify-start">
               <div className="bg-white p-3 rounded-lg">
-                <QRCodeSVG value={tunnelUrl} size={160} />
+                <QRCodeSVG value={tunnelUrl} size={100} />
               </div>
             </div>
           </div>
@@ -200,16 +177,6 @@ export function TunnelSettings() {
           />
         </SettingRow>
 
-        <SettingRow
-          label="Only while connected to power adapter"
-          description="When disabled, sleep will also be prevented on battery power. This may cause overheating and battery drain."
-        >
-          <ToggleSwitch
-            checked={onlyOnPower}
-            onChange={handleOnlyOnPowerToggle}
-            disabled={!tunnelEnabled || !preventSleep || sleepLoading}
-          />
-        </SettingRow>
       </SettingSection>
     </div>
   );

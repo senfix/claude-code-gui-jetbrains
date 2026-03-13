@@ -9,7 +9,7 @@ import {
   ArrowLeftIcon,
   ArrowsRightLeftIcon,
   ArrowUpCircleIcon,
-  GlobeAltIcon,
+  ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
 import type { ComponentType, SVGProps } from 'react';
 
@@ -28,7 +28,7 @@ export enum IconName {
   ARROW_LEFT = 'ArrowLeftIcon',
   ARROWS_RIGHT_LEFT = 'ArrowsRightLeftIcon',
   ARROW_UP_CIRCLE = 'ArrowUpCircleIcon',
-  GLOBE_ALT = 'GlobeAltIcon',
+  COMPUTER_DESKTOP = 'ComputerDesktopIcon',
 }
 
 /**
@@ -116,7 +116,7 @@ export const ROUTE_META: Record<Route, RouteMeta> = {
   [Route.SETTINGS_TUNNEL]: {
     path: '/settings/tunnel',
     label: 'Tunnel',
-    icon: IconName.GLOBE_ALT,
+    icon: IconName.COMPUTER_DESKTOP,
     description: 'Remote tunnel and sleep prevention'
   },
   [Route.SETTINGS_USAGE]: {
@@ -153,7 +153,7 @@ export const ICON_COMPONENTS: Record<IconName, ComponentType<SVGProps<SVGSVGElem
   [IconName.ARROW_LEFT]: ArrowLeftIcon,
   [IconName.ARROWS_RIGHT_LEFT]: ArrowsRightLeftIcon,
   [IconName.ARROW_UP_CIRCLE]: ArrowUpCircleIcon,
-  [IconName.GLOBE_ALT]: GlobeAltIcon,
+  [IconName.COMPUTER_DESKTOP]: ComputerDesktopIcon,
 };
 
 /**
