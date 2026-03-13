@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { XMarkIcon, ClipboardDocumentIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 import { QRCodeSVG } from 'qrcode.react';
 import { ToggleSwitch } from '@/components/ToggleSwitch';
@@ -24,6 +24,16 @@ export function TunnelModal(props: Props) {
   const [copied, setCopied] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fullTunnelUrl = useMemo(() => {
+    if (!tunnelUrl) return '';
+    const params = new URLSearchParams(window.location.search);
+    params.delete('env');
+    const search = params.toString() ? `?${params.toString()}` : '';
+    const pathname = window.location.pathname || '';
+    const hash = window.location.hash || '';
+    return `${tunnelUrl}${pathname}${search}${hash}`;
+  }, [tunnelUrl]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -52,8 +62,8 @@ export function TunnelModal(props: Props) {
   }, [tunnelLoading]);
 
   const handleCopy = () => {
-    if (!tunnelUrl) return;
-    navigator.clipboard.writeText(tunnelUrl).then(() => {
+    if (!fullTunnelUrl) return;
+    navigator.clipboard.writeText(fullTunnelUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -114,10 +124,10 @@ export function TunnelModal(props: Props) {
           )}
 
           {/* URL + QR */}
-          {tunnelEnabled && tunnelUrl && (
+          {tunnelEnabled && fullTunnelUrl && (
             <div className="space-y-3">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-[11px] text-zinc-300 flex-1 truncate">{tunnelUrl}</span>
+                <span className="font-mono text-[11px] text-zinc-300 flex-1 truncate">{fullTunnelUrl}</span>
                 <button onClick={handleCopy} className="flex-shrink-0">
                   {copied
                     ? <ClipboardDocumentCheckIcon className="w-3 h-3 text-green-400" />
@@ -127,7 +137,7 @@ export function TunnelModal(props: Props) {
               </div>
               <div className="flex justify-start">
                 <div className="bg-white p-3 rounded-lg">
-                  <QRCodeSVG value={tunnelUrl} size={100} />
+                  <QRCodeSVG value={fullTunnelUrl} size={100} />
                 </div>
               </div>
             </div>
