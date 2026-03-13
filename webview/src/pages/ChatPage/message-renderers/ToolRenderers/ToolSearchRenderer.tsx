@@ -20,7 +20,8 @@ export function ToolSearchRenderer(props: RendererProps) {
     const toolUse = props.toolUse as unknown as ToolSearchToolUseDto;
     const query = toolUse.input?.query ?? '';
     const toolResult = props.toolResult as ToolSearchResultDto | undefined;
-    const matches = toolResult?.toolUseResult?.matches ?? [];
+    const rawMatches = toolResult?.toolUseResult?.matches;
+    const matches = Array.isArray(rawMatches) ? rawMatches : [];
 
     return (
         <ToolWrapper message={props.message}>

@@ -10,7 +10,8 @@ export function AskUserQuestionRenderer(props: RendererProps) {
 
     const isStreaming = props.message?.isStreaming === true;
 
-    const questions = input?.questions ?? [];
+    const rawQuestions = input?.questions;
+    const questions = Array.isArray(rawQuestions) ? rawQuestions : [];
     const hasValidQuestions = questions.length > 0 && typeof questions[0].question === "string";
 
     const inProgress = !toolResult && (isStreaming || !hasValidQuestions);

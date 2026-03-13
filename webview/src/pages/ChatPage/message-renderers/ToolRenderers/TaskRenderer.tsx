@@ -18,7 +18,7 @@ export function TaskRenderer(props: RendererProps) {
     const name = toolUse.name;
     const description = toolUse.input?.description ?? '';
     const input = toolUse.input?.prompt ?? '';
-    const subAgentMessages = toolUse.subAgentMessages ?? [];
+    const subAgentMessages = Array.isArray(toolUse.subAgentMessages) ? toolUse.subAgentMessages : [];
 
     // Extract tool_use blocks from sub-agent messages
     // Build a sub-agent toolUseMap for merging tool_results
