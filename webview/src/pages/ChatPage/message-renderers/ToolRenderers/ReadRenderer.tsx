@@ -1,5 +1,6 @@
 import {getAdapter} from "@/adapters";
 import {ToolUseBlockDto} from "@/types";
+import {cn} from "@/utils/cn";
 import {RendererProps, ToolHeader, ToolWrapper} from "./common";
 
 class ReadToolUseDto extends ToolUseBlockDto {
@@ -21,7 +22,10 @@ export function ReadRenderer(props: RendererProps) {
     return (
         <ToolWrapper message={props.message} groupClassName="pb-2.5">
             <ToolHeader name={name}>
-                <div className="text-white/80 text-[12px] cursor-pointer hover:underline font-mono" onClick={() => getAdapter().openFile(path)}>{fileName}</div>
+                <div
+                    className={cn("text-white/80 text-[12px] font-mono", path && "cursor-pointer hover:underline")}
+                    onClick={path ? () => getAdapter().openFile(path) : undefined}
+                >{fileName}</div>
             </ToolHeader>
         </ToolWrapper>
     )

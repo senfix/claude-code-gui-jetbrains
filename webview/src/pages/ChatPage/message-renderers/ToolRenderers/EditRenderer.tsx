@@ -2,6 +2,7 @@ import {useMemo, useRef, useState, useEffect} from "react";
 import {ToolUseBlockDto} from "@/types";
 import {getAdapter} from "@/adapters";
 import {RendererProps, ToolHeader, ToolWrapper} from "./common";
+import {cn} from "@/utils/cn";
 // @ts-ignore
 import {diffAsText} from "unidiff";
 
@@ -112,7 +113,7 @@ export function EditRenderer(props: RendererProps) {
     return (
         <ToolWrapper message={props.message}>
             <ToolHeader name={name} className="mb-[4px]" inProgress={!props.toolResult}>
-                <div className="text-white/80 text-[11px] cursor-pointer hover:underline font-mono" onClick={() => getAdapter().openFile(path)}>{fileName}</div>
+                <div className={cn("text-white/80 text-[11px] font-mono", path && "cursor-pointer hover:underline")} onClick={path ? () => getAdapter().openFile(path) : undefined}>{fileName}</div>
             </ToolHeader>
             <div ref={containerRef}>
                 <div className="text-white/50 text-[11px] mb-1">Modified</div>
