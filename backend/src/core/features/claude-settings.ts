@@ -4,18 +4,31 @@ import { join } from 'path';
 import { homedir } from 'os';
 
 const CLAUDE_SETTINGS_FILE = join(homedir(), '.claude', 'settings.json');
+const CLAUDE_SETTINGS_LOCAL_FILE = join(homedir(), '.claude', 'settings.local.json');
 
 /**
- * ~/.claude/settings.json 전체를 읽어 반환한다.
- * 파일이 없으면 빈 객체를 반환한다.
+ * Read a JSON file safely, returning {} if the file doesn't exist or fails to parse.
+ */
+async function readJsonFileSafe(filePath: string): Promise<Record<string, unknown>> {
+  try {
+    if (!existsSync(filePath)) return {};
+    const raw = await readFile(filePath, 'utf-8');
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Read ~/.claude/settings.json and settings.local.json, merge them.
+ * settings.local.json takes priority over settings.json.
+ * Returns empty object if files don't exist.
  */
 export async function readClaudeSettings(): Promise<Record<string, unknown>> {
   try {
-    if (!existsSync(CLAUDE_SETTINGS_FILE)) {
-      return {};
-    }
-    const raw = await readFile(CLAUDE_SETTINGS_FILE, 'utf-8');
-    return JSON.parse(raw) as Record<string, unknown>;
+    const base = await readJsonFileSafe(CLAUDE_SETTINGS_FILE);
+    const local = await readJsonFileSafe(CLAUDE_SETTINGS_LOCAL_FILE);
+    return { ...base, ...local };
   } catch (err) {
     console.error('[node-backend]', 'Failed to read Claude settings:', err);
     return {};
@@ -23,29 +36,132 @@ export async function readClaudeSettings(): Promise<Record<string, unknown>> {
 }
 
 /**
- * ~/.claude/settings.json의 단일 키-값을 저장한다.
- * value가 null이면 해당 키를 삭제한다.
- * 기존 키들은 보존한다.
+ * Write a key-value to a JSON file, preserving other keys.
+ * If value is null/undefined, delete the key.
+ */
+async function writeKeyToJsonFile(filePath: string, key: string, value: unknown): Promise<void> {
+  const current = await readJsonFileSafe(filePath);
+  if (value === null || value === undefined) {
+    delete current[key];
+  } else {
+    current[key] = value;
+  }
+  const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+  await mkdir(dir, { recursive: true });
+  await writeFile(filePath, JSON.stringify(current, null, 2) + '\n', 'utf-8');
+}
+
+/**
+ * Remove a key from a JSON file if it exists there.
+ * No-op if file doesn't exist or key is absent.
+ */
+async function removeKeyFromJsonFile(filePath: string, key: string): Promise<void> {
+  const current = await readJsonFileSafe(filePath);
+  if (!(key in current)) return;
+  delete current[key];
+  await writeFile(filePath, JSON.stringify(current, null, 2) + '\n', 'utf-8');
+}
+
+/**
+ * Save a global Claude setting.
+ * Writes to whichever file (settings.json or settings.local.json) the key lives in.
+ * Deletion removes the key from both files.
  */
 export async function saveClaudeSetting(
   key: string,
   value: unknown,
 ): Promise<{ status: 'ok' | 'error'; error?: string }> {
   try {
-    const current = await readClaudeSettings();
-    if (value === null || value === undefined) {
-      delete current[key];
-    } else {
-      current[key] = value;
-    }
     await mkdir(join(homedir(), '.claude'), { recursive: true });
-    await writeFile(CLAUDE_SETTINGS_FILE, JSON.stringify(current, null, 2) + '\n', 'utf-8');
+
+    if (value === null || value === undefined) {
+      await removeKeyFromJsonFile(CLAUDE_SETTINGS_FILE, key);
+      await removeKeyFromJsonFile(CLAUDE_SETTINGS_LOCAL_FILE, key);
+      return { status: 'ok' };
+    }
+
+    // Write to the file where the key currently lives (local takes priority)
+    const localSettings = await readJsonFileSafe(CLAUDE_SETTINGS_LOCAL_FILE);
+    if (key in localSettings) {
+      await writeKeyToJsonFile(CLAUDE_SETTINGS_LOCAL_FILE, key, value);
+    } else {
+      await writeKeyToJsonFile(CLAUDE_SETTINGS_FILE, key, value);
+    }
     return { status: 'ok' };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[node-backend]', 'Failed to save Claude setting:', err);
     return { status: 'error', error: msg };
   }
+}
+
+/**
+ * Read project-level Claude settings from {projectPath}/.claude/settings.json
+ * and {projectPath}/.claude/settings.local.json, merging local over base.
+ */
+export async function readProjectClaudeSettings(projectPath: string): Promise<Record<string, unknown>> {
+  try {
+    const base = await readJsonFileSafe(join(projectPath, '.claude', 'settings.json'));
+    const local = await readJsonFileSafe(join(projectPath, '.claude', 'settings.local.json'));
+    return { ...base, ...local };
+  } catch (err) {
+    console.error('[node-backend]', 'Failed to read project Claude settings:', err);
+    return {};
+  }
+}
+
+/**
+ * Read merged Claude settings: global → project
+ */
+export async function readMergedClaudeSettings(projectPath?: string): Promise<{ settings: Record<string, unknown>; overrides: string[] }> {
+  const globalSettings = await readClaudeSettings();
+  if (!projectPath) {
+    return { settings: globalSettings, overrides: [] };
+  }
+  const projectSettings = await readProjectClaudeSettings(projectPath);
+  const overrides = Object.keys(projectSettings);
+  return {
+    settings: { ...globalSettings, ...projectSettings },
+    overrides,
+  };
+}
+
+/**
+ * Save a Claude setting to the specified scope.
+ */
+export async function saveClaudeSettingToScope(
+  key: string,
+  value: unknown,
+  scope: 'global' | 'project',
+  projectPath?: string,
+): Promise<{ status: 'ok' | 'error'; error?: string }> {
+  if (scope === 'project') {
+    if (!projectPath) return { status: 'error', error: 'projectPath required for project scope' };
+    try {
+      const baseFile = join(projectPath, '.claude', 'settings.json');
+      const localFile = join(projectPath, '.claude', 'settings.local.json');
+      await mkdir(join(projectPath, '.claude'), { recursive: true });
+
+      if (value === null || value === undefined) {
+        await removeKeyFromJsonFile(baseFile, key);
+        await removeKeyFromJsonFile(localFile, key);
+        return { status: 'ok' };
+      }
+
+      // Write to the file where the key currently lives (local takes priority)
+      const localSettings = await readJsonFileSafe(localFile);
+      if (key in localSettings) {
+        await writeKeyToJsonFile(localFile, key, value);
+      } else {
+        await writeKeyToJsonFile(baseFile, key, value);
+      }
+      return { status: 'ok' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { status: 'error', error: msg };
+    }
+  }
+  return saveClaudeSetting(key, value);
 }
 
 // ─── File Watcher ──────────────────────────────────────────────────────────

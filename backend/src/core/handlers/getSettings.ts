@@ -1,7 +1,8 @@
 import type { ConnectionManager } from '../../ws/connection-manager';
 import type { Bridge } from '../../bridge/bridge-interface';
 import type { IPCMessage } from '../types';
-import { readSettingsFile } from '../features/settings';
+import { readMergedSettings, readSettingsFile, readProjectSettings } from '../features/settings';
+import { getSettingsWatcher } from '../features/settings-watcher';
 
 export async function getSettingsHandler(
   connectionId: string,
@@ -9,10 +10,31 @@ export async function getSettingsHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  const settings = await readSettingsFile();
+  const workingDir = message.payload?.workingDir as string | undefined;
+  const scope = message.payload?.scope as 'global' | 'project' | 'merged' | undefined;
+
+  if (workingDir) {
+    getSettingsWatcher()?.registerProject(workingDir);
+  }
+
+  let settings: Record<string, unknown>;
+  let overrides: string[] = [];
+
+  if (scope === 'global') {
+    settings = await readSettingsFile();
+  } else if (scope === 'project' && workingDir) {
+    settings = await readProjectSettings(workingDir);
+  } else {
+    // Default: merged (for runtime use)
+    const result = await readMergedSettings(workingDir);
+    settings = result.settings;
+    overrides = result.overrides;
+  }
+
   connections.sendTo(connectionId, 'ACK', {
     requestId: message.requestId,
     status: 'ok',
     settings,
+    overrides,
   });
 }

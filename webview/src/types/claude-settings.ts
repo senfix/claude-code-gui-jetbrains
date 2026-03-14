@@ -9,12 +9,22 @@
  * Priority: #1 > #2 > #3 (later will merge)
  */
 
+export interface PermissionsConfig {
+  defaultMode?: string;
+  disableBypassPermissionsMode?: string;
+  allow?: string[];
+  deny?: string[];
+  ask?: string[];
+  additionalDirectories?: string[];
+}
+
 export interface ClaudeSettingsState {
   model: string | null; // full model ID like 'claude-opus-4-6' or null for default
   language: string | null; // Claude's preferred response language (e.g., "korean", "japanese")
   effortLevel: string | null; // CLI effort level: 'low' | 'medium' | 'high' | null (auto)
   alwaysThinkingEnabled: boolean; // extended thinking always on
   preferFastMode: boolean; // fast output mode (Opus 4.6 only)
+  permissions?: PermissionsConfig;
   [key: string]: unknown; // extensible for future settings
 }
 

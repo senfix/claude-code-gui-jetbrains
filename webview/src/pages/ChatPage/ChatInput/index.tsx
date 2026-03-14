@@ -2,16 +2,14 @@ import { useCallback, useEffect, useRef, KeyboardEvent, useState } from 'react';
 import { CommandPalettePanel } from '@/commandPalette/ui/CommandPalettePanel';
 import { useCommandPalette } from '@/commandPalette/hooks/useCommandPalette';
 import { PanelSectionId, PanelItemType, CommandItem } from '@/types/commandPalette';
-import { INPUT_MODES } from '../../../types/chatInput';
+import { INPUT_MODES, CLI_FLAG_TO_INPUT_MODE } from '../../../types/chatInput';
 import { InputModeTag } from './InputModeTag';
 import { ActionButtons } from './ActionButtons';
 import { useChatInputFocus } from '../../../contexts/ChatInputFocusContext';
 import { useInputHistory } from './hooks/useInputHistory';
 import { useTextareaAutoResize } from './hooks/useTextareaAutoResize';
-import { useSettings } from '@/contexts/SettingsContext';
 import { useSessionContext } from '@/contexts/SessionContext';
 import { useChatStreamContext } from '@/contexts/ChatStreamContext';
-import { SettingKey } from '@/types/settings';
 import { getTextContent, SessionState } from '@/types';
 import { LoadedMessageType } from '@/dto';
 import { useAttachments } from './hooks/useAttachments';
@@ -41,7 +39,6 @@ export function ChatInput() {
   const inputHistory = useInputHistory();
   const [isFocused, setIsFocused] = useState(false);
   const lastInitSessionRef = useRef<string | undefined>(undefined);
-  const { settings } = useSettings();
 
   const {
     attachments,
@@ -103,8 +100,11 @@ export function ChatInput() {
 
   const disabled = sessionState === SessionState.Error || !workingDirectory;
 
-  // 설정에서 초기 모드가 변경되거나, 세션 전환 시 초기 모드로 재동기화
-  const initialInputMode = settings[SettingKey.INITIAL_INPUT_MODE];
+  // Claude settings의 permissions.defaultMode에서 초기 모드 결정
+  const defaultModeFlag = claudeSettings.permissions?.defaultMode;
+  const initialInputMode = defaultModeFlag
+    ? (CLI_FLAG_TO_INPUT_MODE[defaultModeFlag] ?? 'ask_before_edit')
+    : 'ask_before_edit';
   useEffect(() => {
     syncInitialInputMode(initialInputMode);
   }, [initialInputMode, syncInitialInputMode, modeResetTrigger]);

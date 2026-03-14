@@ -2,8 +2,10 @@ import { SettingSection, SettingRow } from '../common';
 import { ROUTE_META, Route } from '@/router/routes';
 import { useClaudeSettings } from '@/contexts/ClaudeSettingsContext';
 
+const NOT_SET_VALUE = '__NOT_SET__';
+
 const LANGUAGE_OPTIONS = [
-  { value: '', label: 'Default (English)' },
+  { value: 'english', label: 'English' },
   { value: 'korean', label: 'Korean (한국어)' },
   { value: 'japanese', label: 'Japanese (日本語)' },
   { value: 'chinese', label: 'Chinese (中文)' },
@@ -15,9 +17,11 @@ const LANGUAGE_OPTIONS = [
 
 export function GeneralSettings() {
   const meta = ROUTE_META[Route.SETTINGS_GENERAL];
-  const { settings, updateSetting } = useClaudeSettings();
+  const { scopeSettings, updateSetting, scope, resetToGlobal } = useClaudeSettings();
 
-  const currentLanguage = (settings.language as string) ?? '';
+  const rawLanguage = scopeSettings.language as string | undefined;
+  const isNotSet = rawLanguage === undefined && scope === 'project';
+  const currentLanguage = isNotSet ? NOT_SET_VALUE : ((rawLanguage as string) ?? '');
 
   return (
     <div>
@@ -26,16 +30,27 @@ export function GeneralSettings() {
       <SettingSection title="Claude Code">
         <SettingRow
           label="Language"
-          description="Claude's preferred response language (saved to ~/.claude/settings.json)"
+          description="Claude's preferred response language"
         >
           <select
-            className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100"
+            className={`bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm ${
+              isNotSet ? 'text-zinc-500 italic' : 'text-zinc-100'
+            }`}
             value={currentLanguage}
             onChange={(e) => {
               const value = e.target.value;
-              updateSetting('language', value || null);
+              if (value === NOT_SET_VALUE) {
+                resetToGlobal('language');
+                return;
+              }
+              updateSetting('language', value);
             }}
           >
+            {scope === 'project' && (
+              <option value={NOT_SET_VALUE} className="text-zinc-500">
+                Not set (use global)
+              </option>
+            )}
             {LANGUAGE_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}

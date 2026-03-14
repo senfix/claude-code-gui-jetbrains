@@ -1,7 +1,7 @@
 import type { ConnectionManager } from '../../ws/connection-manager';
 import type { Bridge } from '../../bridge/bridge-interface';
 import type { IPCMessage } from '../types';
-import { saveClaudeSetting } from '../features/claude-settings';
+import { saveClaudeSettingToScope, readMergedClaudeSettings } from '../features/claude-settings';
 
 export async function saveClaudeSettingsHandler(
   connectionId: string,
@@ -11,7 +11,16 @@ export async function saveClaudeSettingsHandler(
 ): Promise<void> {
   const key = message.payload?.key as string;
   const value = message.payload?.value;
-  const result = await saveClaudeSetting(key, value);
+  const scope = (message.payload?.scope as 'global' | 'project') || 'global';
+  const workingDir = message.payload?.workingDir as string | undefined;
+
+  const result = await saveClaudeSettingToScope(key, value, scope, workingDir);
+
+  if (result.status === 'ok') {
+    const { settings, overrides } = await readMergedClaudeSettings(workingDir);
+    connections.broadcastToAll('CLAUDE_SETTINGS_CHANGED', { settings, overrides });
+  }
+
   connections.sendTo(connectionId, 'ACK', {
     requestId: message.requestId,
     ...result,

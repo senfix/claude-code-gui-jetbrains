@@ -5,11 +5,12 @@ import { SessionMetaDto } from '../dto';
 import { useBridgeContext } from './BridgeContext';
 import { useApi } from './ApiContext';
 import { useWorkingDir } from './WorkingDirContext';
+import { useClaudeSettings } from './ClaudeSettingsContext';
 import { getAdapter, onBridgeReady } from '../adapters';
 import { getLogForwarder } from '../api/logging';
 import { toTitle } from '../mappers/sessionTransformer';
 import { Route, routeToPath, sessionToPath, parseSessionIdFromPath, withWorkingDir } from '../router/routes';
-import { InputMode, MODE_CYCLE } from '../types/chatInput';
+import { InputMode, getAvailableModes } from '../types/chatInput';
 
 
 interface SessionContextValue {
@@ -55,9 +56,12 @@ interface SessionProviderProps {
 export function SessionProvider({ children }: SessionProviderProps) {
   const { subscribe, isConnected } = useBridgeContext();
   const { workingDirectory, setWorkingDirectory } = useWorkingDir();
+  const { settings: claudeSettings } = useClaudeSettings();
   const api = useApi();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const bypassDisabled = claudeSettings.permissions?.disableBypassPermissionsMode === 'disable';
 
   // currentSessionId is derived from URL (SSOT)
   const currentSessionId = parseSessionIdFromPath(location.pathname);
@@ -85,11 +89,12 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const cycleInputMode = useCallback(() => {
     hasUserChangedMode.current = true;
     setInputModeState((current) => {
-      const currentIndex = MODE_CYCLE.indexOf(current);
-      const nextIndex = (currentIndex + 1) % MODE_CYCLE.length;
-      return MODE_CYCLE[nextIndex];
+      const modes = getAvailableModes(bypassDisabled);
+      const currentIndex = modes.indexOf(current);
+      const nextIndex = (currentIndex + 1) % modes.length;
+      return modes[nextIndex];
     });
-  }, []);
+  }, [bypassDisabled]);
 
   const syncInitialInputMode = useCallback((initialMode: InputMode) => {
     if (!hasUserChangedMode.current) {

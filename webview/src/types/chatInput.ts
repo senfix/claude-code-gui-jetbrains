@@ -74,6 +74,15 @@ export const MODE_CYCLE: InputMode[] = [
 ];
 
 /**
+ * Returns available input modes.
+ * When bypassDisabled is true, bypass mode is excluded from the cycle.
+ */
+export function getAvailableModes(bypassDisabled: boolean): InputMode[] {
+  if (bypassDisabled) return MODE_CYCLE.filter(mode => mode !== InputModeValues.BYPASS);
+  return MODE_CYCLE;
+}
+
+/**
  * InputMode -> Claude CLI --permission-mode flag value mapping
  */
 export const INPUT_MODE_TO_CLI_FLAG: Record<InputMode, string> = {
@@ -81,6 +90,16 @@ export const INPUT_MODE_TO_CLI_FLAG: Record<InputMode, string> = {
   [InputModeValues.BYPASS]: 'bypassPermissions',
   [InputModeValues.ASK_BEFORE_EDIT]: 'default',
   [InputModeValues.AUTO_EDIT]: 'acceptEdits',
+} as const;
+
+/**
+ * Claude CLI --permission-mode flag -> InputMode reverse mapping
+ */
+export const CLI_FLAG_TO_INPUT_MODE: Record<string, InputMode> = {
+  plan: InputModeValues.PLAN,
+  bypassPermissions: InputModeValues.BYPASS,
+  default: InputModeValues.ASK_BEFORE_EDIT,
+  acceptEdits: InputModeValues.AUTO_EDIT,
 } as const;
 
 // ============================================

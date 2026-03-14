@@ -59,6 +59,20 @@ vi.mock('../WorkingDirContext', () => ({
   }),
 }));
 
+vi.mock('../ClaudeSettingsContext', () => ({
+  useClaudeSettings: () => ({
+    settings: {
+      permissions: {},
+    },
+    scopeSettings: {},
+    isLoading: false,
+    scope: 'global',
+    setScope: vi.fn(),
+    updateSetting: vi.fn(),
+    resetToGlobal: vi.fn(),
+  }),
+}));
+
 // Mock react-router-dom
 let mockPathname = '/';
 const mockNavigate = vi.fn((path: string, _options?: unknown) => {

@@ -56,6 +56,7 @@ export interface RouteMeta {
   label: string;
   icon: IconName | null;
   description?: string;
+  scopeSupport?: 'both' | 'none';
 }
 
 /**
@@ -87,55 +88,64 @@ export const ROUTE_META: Record<Route, RouteMeta> = {
     path: '/settings/general',
     label: 'General',
     icon: IconName.COG,
-    description: 'General settings'
+    description: 'General settings',
+    scopeSupport: 'both',
   },
   [Route.SETTINGS_APPEARANCE]: {
     path: '/settings/appearance',
     label: 'Appearance',
     icon: IconName.SWATCH,
-    description: 'Theme and display settings'
+    description: 'Theme and display settings',
+    scopeSupport: 'both',
   },
   [Route.SETTINGS_PERMISSIONS]: {
     path: '/settings/permissions',
     label: 'Permissions',
     icon: IconName.SHIELD_CHECK,
-    description: 'Tool approval settings'
+    description: 'Tool approval settings',
+    scopeSupport: 'both',
   },
   [Route.SETTINGS_CLI]: {
     path: '/settings/cli',
     label: 'CLI',
     icon: IconName.COMMAND_LINE,
-    description: 'Claude CLI configuration'
+    description: 'Claude CLI configuration',
+    scopeSupport: 'both',
   },
   [Route.SETTINGS_ADVANCED]: {
     path: '/settings/advanced',
     label: 'Advanced',
     icon: IconName.ADJUSTMENTS,
-    description: 'Debug and advanced options'
+    description: 'Debug and advanced options',
+    scopeSupport: 'both',
   },
   [Route.SETTINGS_TUNNEL]: {
     path: '/settings/tunnel',
     label: 'Tunnel',
     icon: IconName.COMPUTER_DESKTOP,
-    description: 'Remote tunnel and sleep prevention'
+    description: 'Remote tunnel and sleep prevention',
+    scopeSupport: 'none',
   },
   [Route.SETTINGS_USAGE]: {
     path: '/settings/usage',
     label: 'Usage',
     icon: IconName.CHART_BAR_SQUARE,
-    description: 'Plan usage limits and quota'
+    description: 'Plan usage limits and quota',
+    scopeSupport: 'none',
   },
   [Route.SETTINGS_RELEASES]: {
     path: '/settings/releases',
     label: 'Releases',
     icon: IconName.ARROW_UP_CIRCLE,
     description: 'Release notes and updates',
+    scopeSupport: 'none',
   },
   [Route.SETTINGS_ABOUT]: {
     path: '/settings/about',
     label: 'About',
     icon: IconName.INFORMATION_CIRCLE,
-    description: 'Version and information'
+    description: 'Version and information',
+    scopeSupport: 'none',
   },
 };
 
@@ -238,7 +248,7 @@ export const SETTINGS_SUB_ROUTES: Route[] = [
   Route.SETTINGS_APPEARANCE,
   Route.SETTINGS_PERMISSIONS,
   Route.SETTINGS_CLI,
-  Route.SETTINGS_ADVANCED,
+  // Route.SETTINGS_ADVANCED,  // TODO: not yet implemented
   Route.SETTINGS_TUNNEL,
   Route.SETTINGS_USAGE,
   Route.SETTINGS_RELEASES,

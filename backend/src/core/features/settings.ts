@@ -13,7 +13,6 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
   fontSize: 13,
   debugMode: false,
   logLevel: 'info',
-  initialInputMode: 'ask_before_edit',
   terminalApp: null,
 };
 
@@ -23,7 +22,6 @@ const COMMENT_MAP: Record<string, string> = {
   fontSize: '글꼴 크기 (8~32)',
   debugMode: '디버그 모드 활성화',
   logLevel: '로그 레벨: "debug" | "info" | "warn" | "error"',
-  initialInputMode: '기본 입력 모드: "plan" | "bypass" | "ask_before_edit" | "auto_edit"',
   terminalApp: '터미널 프로그램 (null이면 OS 기본 터미널)',
 };
 
@@ -79,7 +77,7 @@ export async function readSettingsFile(): Promise<Record<string, unknown>> {
   }
 }
 
-interface SaveResult {
+export interface SaveResult {
   status: 'ok' | 'error';
   error?: string;
 }
@@ -111,11 +109,6 @@ function validateSetting(key: string, value: unknown): string | null {
         return 'logLevel must be one of "debug", "info", "warn", "error"';
       }
       break;
-    case 'initialInputMode':
-      if (!['plan', 'bypass', 'ask_before_edit', 'auto_edit'].includes(value as string)) {
-        return 'initialInputMode must be one of "plan", "bypass", "ask_before_edit", "auto_edit"';
-      }
-      break;
     case 'cliPath':
       if (value !== null && typeof value !== 'string') {
         return 'cliPath must be a string or null';
@@ -128,6 +121,74 @@ function validateSetting(key: string, value: unknown): string | null {
       break;
   }
   return null;
+}
+
+/**
+ * Read project-level app settings.
+ * Project settings use JSON format: {projectPath}/.claude-code-gui/settings.json
+ */
+export async function readProjectSettings(projectPath: string): Promise<Record<string, unknown>> {
+  const filePath = join(projectPath, '.claude-code-gui', 'settings.json');
+  try {
+    if (!existsSync(filePath)) return {};
+    const raw = await readFile(filePath, 'utf-8');
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch (err) {
+    console.error('[node-backend]', 'Failed to read project settings:', err);
+    return {};
+  }
+}
+
+/**
+ * Read merged settings: DEFAULT → global → project
+ */
+export async function readMergedSettings(projectPath?: string): Promise<{ settings: Record<string, unknown>; overrides: string[] }> {
+  const globalSettings = await readSettingsFile();
+  if (!projectPath) {
+    return { settings: globalSettings, overrides: [] };
+  }
+  const projectSettings = await readProjectSettings(projectPath);
+  const overrides = Object.keys(projectSettings);
+  return {
+    settings: { ...globalSettings, ...projectSettings },
+    overrides,
+  };
+}
+
+/**
+ * Save a setting to the specified scope.
+ * For project scope, saves to {projectPath}/.claude-code-gui/settings.json
+ */
+export async function saveSettingToScope(
+  key: string,
+  value: unknown,
+  scope: 'global' | 'project',
+  projectPath?: string,
+): Promise<SaveResult> {
+  if (scope === 'project') {
+    if (!projectPath) return { status: 'error', error: 'projectPath required for project scope' };
+    const validationError = validateSetting(key, value);
+    if (validationError) return { status: 'error', error: validationError };
+
+    try {
+      const filePath = join(projectPath, '.claude-code-gui', 'settings.json');
+      let current: Record<string, unknown> = {};
+      try {
+        if (existsSync(filePath)) {
+          current = JSON.parse(await readFile(filePath, 'utf-8')) as Record<string, unknown>;
+        }
+      } catch { /* start fresh */ }
+      current[key] = value;
+      await mkdir(join(projectPath, '.claude-code-gui'), { recursive: true });
+      await writeFile(filePath, JSON.stringify(current, null, 2) + '\n', 'utf-8');
+      return { status: 'ok' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { status: 'error', error: msg };
+    }
+  }
+  // global scope: use existing saveSettingToFile
+  return saveSettingToFile(key, value);
 }
 
 export async function saveSettingToFile(key: string, value: unknown): Promise<SaveResult> {

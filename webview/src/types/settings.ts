@@ -1,5 +1,3 @@
-import { InputModeValues, type InputMode } from './chatInput';
-
 /**
  * 설정 키 정의 - Kotlin SettingsManager와 동기화 (settings.js 파일 기반)
  */
@@ -14,9 +12,6 @@ export enum SettingKey {
   // Advanced
   DEBUG_MODE = 'debugMode',
   LOG_LEVEL = 'logLevel',
-
-  // Input
-  INITIAL_INPUT_MODE = 'initialInputMode',
 
   // Terminal
   TERMINAL_APP = 'terminalApp',
@@ -50,7 +45,6 @@ export interface SettingsState {
   [SettingKey.FONT_SIZE]: number;
   [SettingKey.DEBUG_MODE]: boolean;
   [SettingKey.LOG_LEVEL]: LogLevel;
-  [SettingKey.INITIAL_INPUT_MODE]: InputMode;
   [SettingKey.TERMINAL_APP]: string | null;
 }
 
@@ -63,6 +57,5 @@ export const DEFAULT_SETTINGS: SettingsState = {
   [SettingKey.FONT_SIZE]: 13,
   [SettingKey.DEBUG_MODE]: false,
   [SettingKey.LOG_LEVEL]: LogLevel.INFO,
-  [SettingKey.INITIAL_INPUT_MODE]: InputModeValues.ASK_BEFORE_EDIT,
   [SettingKey.TERMINAL_APP]: null,
 };

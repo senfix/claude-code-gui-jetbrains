@@ -3,7 +3,7 @@ import { startWebSocketServer } from './ws/ws-server';
 import { BrowserBridge } from './bridge/browser-bridge';
 import { JetBrainsBridge } from './bridge/jetbrains-bridge';
 import { handleMessage } from './core/handlers/index';
-import { watchClaudeSettingsFile, stopWatchingClaudeSettingsFile } from './core/features/claude-settings';
+import { initSettingsWatcher, stopSettingsWatcher } from './core/features/settings-watcher';
 import { restoreTunnelState } from './core/features/tunnel-manager';
 import { restoreSleepGuardState } from './core/features/sleep-guard';
 import { isJetBrainsMode, serverPort, webviewDir } from './config/environment';
@@ -110,15 +110,16 @@ async function main() {
   restoreTunnelState();
   restoreSleepGuardState().catch(() => {});
 
-  // Start watching Claude settings file for external changes
-  watchClaudeSettingsFile((settings) => {
-    console.error('[node-backend]', 'Broadcasting CLAUDE_SETTINGS_CHANGED event');
-    connections.broadcastToAll('CLAUDE_SETTINGS_CHANGED', { settings });
+  // Start watching all settings files for external changes
+  const settingsWatcher = initSettingsWatcher((event, data) => {
+    console.error('[node-backend]', `Broadcasting ${event} event`);
+    connections.broadcastToAll(event, data);
   });
+  settingsWatcher.startGlobalWatchers();
 
   async function shutdown(signal: string) {
     console.error('[node-backend]', `${signal} received, shutting down...`);
-    stopWatchingClaudeSettingsFile();
+    stopSettingsWatcher();
     connections.shutdownAll();
     close();
 
