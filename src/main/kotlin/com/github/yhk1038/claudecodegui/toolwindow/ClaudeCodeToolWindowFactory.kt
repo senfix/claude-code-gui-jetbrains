@@ -2,9 +2,11 @@ package com.github.yhk1038.claudecodegui.toolwindow
 
 import com.github.yhk1038.claudecodegui.editor.ClaudeCodeVirtualFile
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.startup.StartupManager
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
@@ -17,6 +19,8 @@ import javax.swing.SwingConstants
 import java.awt.BorderLayout
 
 class ClaudeCodeToolWindowFactory : ToolWindowFactory, DumbAware {
+
+    private val logger = Logger.getInstance(ClaudeCodeToolWindowFactory::class.java)
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         // 빈 패널 추가 (Tool Window 구조상 필요)
@@ -39,10 +43,12 @@ class ClaudeCodeToolWindowFactory : ToolWindowFactory, DumbAware {
             }
         })
 
-        // 첫 번째 열기에서도 에디터 탭 열기
-        ApplicationManager.getApplication().invokeLater {
-            focusOrOpenClaudeCodeTab(project)
-            toolWindow.hide()
+        // 프로젝트 완전 초기화 후 에디터 탭 열기 (Windows/CLion에서 에디터 미초기화 NPE 방지)
+        StartupManager.getInstance(project).runAfterOpened {
+            ApplicationManager.getApplication().invokeLater {
+                focusOrOpenClaudeCodeTab(project)
+                toolWindow.hide()
+            }
         }
     }
 
@@ -59,12 +65,36 @@ class ClaudeCodeToolWindowFactory : ToolWindowFactory, DumbAware {
                 .firstOrNull()
 
             val fileToFocus = lastSelected ?: openClaudeFiles.last()
-            fileEditorManager.openFile(fileToFocus, true)
+            try {
+                fileEditorManager.openFile(fileToFocus, true)
+            } catch (e: Exception) {
+                logger.warn("Failed to open Claude Code tab, retrying in 500ms", e)
+                retryOpenFile(project, fileToFocus)
+            }
         } else {
             // 열린 탭이 없으면 새 세션 열기
             val newFile = ClaudeCodeVirtualFile.getOrCreate(project, UUID.randomUUID().toString())
-            fileEditorManager.openFile(newFile, true)
+            try {
+                fileEditorManager.openFile(newFile, true)
+            } catch (e: Exception) {
+                logger.warn("Failed to open new Claude Code tab, retrying in 500ms", e)
+                retryOpenFile(project, newFile)
+            }
         }
+    }
+
+    private fun retryOpenFile(project: Project, file: ClaudeCodeVirtualFile) {
+        java.util.Timer().schedule(object : java.util.TimerTask() {
+            override fun run() {
+                ApplicationManager.getApplication().invokeLater {
+                    try {
+                        FileEditorManager.getInstance(project).openFile(file, true)
+                    } catch (e: Exception) {
+                        logger.warn("Retry also failed to open Claude Code tab", e)
+                    }
+                }
+            }
+        }, 500L)
     }
 
     override fun shouldBeAvailable(project: Project): Boolean = true
