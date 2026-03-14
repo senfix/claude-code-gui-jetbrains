@@ -7,19 +7,18 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * Project-level singleton service that manages a single Node.js backend process.
  *
  * Instead of each ClaudeCodePanel spawning its own NodeProcessManager,
  * all panels share this service so that:
- * - Only one Node.js process runs per project (defect E fix)
- * - Retry creates a new manager in the service field, not a local variable (defect D fix)
+ * - Only one Node.js process runs per project
+ * - Retry creates a new manager in the service field, not a local variable
  * - All panels connect to the same port
- * - RPC messages are dispatched to the correct panel via CompositeRpcHandler (Change 1)
- * - Backend shuts down automatically when the last panel closes (Change 2)
- * - Zombie processes on the default port are killed before startup (Change 3)
+ * - RPC messages are dispatched to the correct panel via CompositeRpcHandler
+ * - If a Node.js backend is already running on the default port, it is reused
+ *   instead of spawning a new process (Node.js manages its own lifecycle)
  */
 @Service(Service.Level.PROJECT)
 class NodeBackendService(private val project: Project) : Disposable {
@@ -29,13 +28,9 @@ class NodeBackendService(private val project: Project) : Disposable {
 
     private var nodeProcessManager: NodeProcessManager? = null
     private var portDeferred = CompletableDeferred<Int>()
-    private val activePanelCount = AtomicInteger(0)
 
-    // Change 1: per-panel RPC handler registry
+    // Per-panel RPC handler registry
     private val rpcHandlers = ConcurrentHashMap<String, NodeProcessManager.RpcHandler>()
-
-    // Change 2: delayed shutdown job
-    private var shutdownJob: Job? = null
 
     /**
      * Delegates RPC calls to the first registered panel handler.
@@ -103,14 +98,12 @@ class NodeBackendService(private val project: Project) : Disposable {
      */
     @Synchronized
     fun ensureStarted(panelId: String, rpcHandler: NodeProcessManager.RpcHandler) {
-        // Change 2: cancel pending shutdown since a new panel is opening
-        shutdownJob?.cancel()
-        shutdownJob = null
-
         rpcHandlers[panelId] = rpcHandler
-        activePanelCount.incrementAndGet()
         if (nodeProcessManager == null) {
             startBackend()
+        } else if (nodeProcessManager?.isAlive == false && !isBackendAlreadyRunning(DEFAULT_PORT)) {
+            logger.info("Node.js backend process is dead, restarting...")
+            restart()
         }
     }
 
@@ -131,32 +124,23 @@ class NodeBackendService(private val project: Project) : Disposable {
 
     /**
      * Called by a panel when it is disposed.
-     * Removes the panel's RPC handler and decrements the active panel count.
-     * If no panels remain, schedules a delayed backend shutdown.
+     * Removes the panel's RPC handler from the registry.
+     * Node.js manages its own lifecycle — no shutdown scheduling here.
      */
     fun releasePanel(panelId: String) {
         rpcHandlers.remove(panelId)
-        val remaining = activePanelCount.decrementAndGet()
-        logger.info("Panel released. Active panels: $remaining")
-
-        // Change 2: schedule backend shutdown when last panel closes
-        if (remaining <= 0) {
-            shutdownJob = scope.launch {
-                delay(SHUTDOWN_DELAY_MS)
-                // Re-check count in case a new panel opened during the delay
-                if (activePanelCount.get() <= 0) {
-                    synchronized(this@NodeBackendService) {
-                        stopBackend()
-                    }
-                    logger.info("Backend stopped: no active panels remaining")
-                }
-            }
-        }
+        logger.info("Panel released: $panelId (remaining handlers: ${rpcHandlers.size})")
+        // Node.js manages its own lifecycle — no shutdown scheduling here
     }
 
     private fun startBackend() {
-        // Change 3: kill any zombie process occupying the default port before starting
-        killExistingProcessOnPort(DEFAULT_PORT)
+        // Check if a Node.js process is already running on the default port
+        if (isBackendAlreadyRunning(DEFAULT_PORT)) {
+            logger.info("Reusing existing Node.js backend on port $DEFAULT_PORT")
+            portDeferred = CompletableDeferred()
+            portDeferred.complete(DEFAULT_PORT)
+            return
+        }
 
         portDeferred = CompletableDeferred()
         val manager = NodeProcessManager(project, scope)
@@ -180,28 +164,26 @@ class NodeBackendService(private val project: Project) : Disposable {
     }
 
     /**
-     * Change 3: Kill any process occupying the given port using lsof (macOS/Linux).
+     * Check if a Node.js backend is already listening on the given port.
+     * Any valid HTTP response (2xx–4xx) indicates a running server.
      */
-    private fun killExistingProcessOnPort(port: Int) {
-        try {
-            val lsof = Runtime.getRuntime().exec(arrayOf("lsof", "-ti", ":$port"))
-            val output = lsof.inputStream.bufferedReader().readText().trim()
-            lsof.waitFor()
-            if (output.isNotEmpty()) {
-                val pids = output.lines().filter { it.isNotBlank() }
-                for (pid in pids) {
-                    logger.warn("Killing zombie process on port $port (PID: $pid)")
-                    Runtime.getRuntime().exec(arrayOf("kill", "-9", pid)).waitFor()
-                }
-                Thread.sleep(200)
-            }
-        } catch (e: Exception) {
-            logger.warn("Failed to kill existing process on port $port: ${e.message}")
+    private fun isBackendAlreadyRunning(port: Int): Boolean {
+        return try {
+            val url = java.net.URL("http://127.0.0.1:$port/")
+            val conn = url.openConnection() as java.net.HttpURLConnection
+            conn.connectTimeout = 2000
+            conn.readTimeout = 2000
+            conn.requestMethod = "GET"
+            val code = conn.responseCode
+            conn.disconnect()
+            code in 200..499  // Any valid HTTP response means server is running
+        } catch (_: Exception) {
+            false
         }
     }
 
     override fun dispose() {
-        shutdownJob?.cancel()
+        // IDE is shutting down — clean up child process
         stopBackend()
         scope.coroutineContext[Job]?.cancel()
         logger.info("NodeBackendService disposed")
@@ -209,8 +191,6 @@ class NodeBackendService(private val project: Project) : Disposable {
 
     companion object {
         const val DEFAULT_PORT = 19836
-
-        private const val SHUTDOWN_DELAY_MS = 500L
 
         fun getInstance(project: Project): NodeBackendService =
             project.getService(NodeBackendService::class.java)

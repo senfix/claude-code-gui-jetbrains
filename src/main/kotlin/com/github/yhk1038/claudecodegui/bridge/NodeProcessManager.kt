@@ -763,4 +763,10 @@ class NodeProcessManager(
         stdinWriter = null
         logger.info("NodeProcessManager disposed")
     }
+
+    /**
+     * Check whether the underlying Node.js process is still running.
+     */
+    val isAlive: Boolean
+        get() = process?.isAlive == true
 }
