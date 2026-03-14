@@ -6,6 +6,33 @@ import { homedir } from 'os';
 const CLAUDE_SETTINGS_FILE = join(homedir(), '.claude', 'settings.json');
 const CLAUDE_SETTINGS_LOCAL_FILE = join(homedir(), '.claude', 'settings.local.json');
 
+function deepMergeSettings(
+  base: Record<string, unknown>,
+  override: Record<string, unknown>,
+): Record<string, unknown> {
+  const result = { ...base };
+  for (const key of Object.keys(override)) {
+    const baseVal = base[key];
+    const overVal = override[key];
+    if (
+      overVal !== null &&
+      typeof overVal === 'object' &&
+      !Array.isArray(overVal) &&
+      baseVal !== null &&
+      typeof baseVal === 'object' &&
+      !Array.isArray(baseVal)
+    ) {
+      result[key] = deepMergeSettings(
+        baseVal as Record<string, unknown>,
+        overVal as Record<string, unknown>,
+      );
+    } else {
+      result[key] = overVal;
+    }
+  }
+  return result;
+}
+
 /**
  * Read a JSON file safely, returning {} if the file doesn't exist or fails to parse.
  */
@@ -103,7 +130,7 @@ export async function readProjectClaudeSettings(projectPath: string): Promise<Re
   try {
     const base = await readJsonFileSafe(join(projectPath, '.claude', 'settings.json'));
     const local = await readJsonFileSafe(join(projectPath, '.claude', 'settings.local.json'));
-    return { ...base, ...local };
+    return deepMergeSettings(base, local);
   } catch (err) {
     console.error('[node-backend]', 'Failed to read project Claude settings:', err);
     return {};
@@ -121,7 +148,7 @@ export async function readMergedClaudeSettings(projectPath?: string): Promise<{ 
   const projectSettings = await readProjectClaudeSettings(projectPath);
   const overrides = Object.keys(projectSettings);
   return {
-    settings: { ...globalSettings, ...projectSettings },
+    settings: deepMergeSettings(globalSettings, projectSettings),
     overrides,
   };
 }
