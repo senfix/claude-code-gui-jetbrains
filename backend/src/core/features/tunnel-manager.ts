@@ -4,6 +4,8 @@ import { resolve } from 'path';
 import { exec as execCallback } from 'child_process';
 import { promisify } from 'util';
 import { arch, platform, tmpdir } from 'os';
+import http from 'http';
+import https from 'https';
 
 const execAsync = promisify(execCallback);
 
@@ -155,6 +157,33 @@ export function restoreTunnelState(): void {
   }
 }
 
+/**
+ * Poll the tunnel URL until it returns HTTP 200, indicating
+ * the Cloudflare edge has fully registered the tunnel.
+ */
+async function waitForTunnelReady(url: string, timeoutMs = 30_000, intervalMs = 1_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const ok = await new Promise<boolean>((resolve) => {
+      const req = https.get(url, { timeout: 5_000 }, (res) => {
+        resolve(res.statusCode === 200);
+        res.resume();
+      });
+      req.on('error', () => resolve(false));
+      req.on('timeout', () => {
+        req.destroy();
+        resolve(false);
+      });
+    });
+
+    if (ok) return;
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+
+  console.error('[node-backend]', `Tunnel URL did not become ready within ${timeoutMs / 1000}s, proceeding anyway`);
+}
+
 async function findOrInstallCloudflared(): Promise<string> {
   // 1. Try system PATH
   const whichCmd = platform() === 'win32' ? 'where cloudflared' : 'which cloudflared';
@@ -226,9 +255,13 @@ export function startTunnel(port: number): Promise<string> {
           resolved = true;
           clearInterval(pollId);
           clearTimeout(timeoutId);
-          tunnelUrl = match[0];
+          const foundUrl = match[0];
+          tunnelUrl = foundUrl;
           if (proc.pid) savePidFile(proc.pid);
-          resolvePromise(tunnelUrl);
+          // Wait for Cloudflare edge to actually serve the tunnel
+          waitForTunnelReady(foundUrl).then(() => {
+            resolvePromise(foundUrl);
+          });
         }
       } catch {
         // file not ready yet
