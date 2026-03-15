@@ -6,7 +6,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.startup.StartupManager
+import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.openapi.wm.ToolWindowManager
@@ -24,8 +24,9 @@ class ClaudeCodeToolWindowFactory : ToolWindowFactory, DumbAware {
 
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         // 빈 패널 추가 (Tool Window 구조상 필요)
+        val label = JLabel("Loading...", SwingConstants.CENTER)
         val panel = JPanel(BorderLayout())
-        panel.add(JLabel("Loading...", SwingConstants.CENTER), BorderLayout.CENTER)
+        panel.add(label, BorderLayout.CENTER)
         val content = ContentFactory.getInstance().createContent(panel, "", false)
         toolWindow.contentManager.addContent(content)
 
@@ -43,11 +44,20 @@ class ClaudeCodeToolWindowFactory : ToolWindowFactory, DumbAware {
             }
         })
 
-        // 프로젝트 완전 초기화 후 에디터 탭 열기 (Windows/CLion에서 에디터 미초기화 NPE 방지)
-        StartupManager.getInstance(project).runAfterOpened {
-            ApplicationManager.getApplication().invokeLater {
+        // 에디터 탭 열기 — 즉시 시도하고, NPE 발생 시 인덱싱 완료 후 재시도
+        ApplicationManager.getApplication().invokeLater {
+            try {
                 focusOrOpenClaudeCodeTab(project)
                 toolWindow.hide()
+            } catch (e: Exception) {
+                logger.info("Editor not ready yet, will retry after indexing", e)
+                label.text = "Waiting for project initialization..."
+                DumbService.getInstance(project).runWhenSmart {
+                    ApplicationManager.getApplication().invokeLater {
+                        focusOrOpenClaudeCodeTab(project)
+                        toolWindow.hide()
+                    }
+                }
             }
         }
     }

@@ -237,7 +237,7 @@ class NodeBackendService : Disposable {
      */
     private fun isBackendAlreadyRunning(port: Int): Boolean {
         return try {
-            val url = java.net.URL("http://127.0.0.1:$port/")
+            val url = java.net.URI("http://127.0.0.1:$port/").toURL()
             val conn = url.openConnection() as java.net.HttpURLConnection
             conn.connectTimeout = 2000
             conn.readTimeout = 2000

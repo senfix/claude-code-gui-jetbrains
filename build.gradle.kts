@@ -106,19 +106,10 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
-            <h3>0.11.2 - WebSocket RPC, Math Rendering & Project Settings</h3>
+            <h3>0.11.3 - Plugin Verifier Compliance</h3>
             <ul>
-                <li>Added LaTeX math rendering support via KaTeX</li>
-                <li>Migrated RPC from stdio to WebSocket with auto-recovery</li>
-                <li>Added project-scoped settings with Global/Project tabs</li>
-                <li>Improved tunnel URL with current path and query params</li>
-                <li>Fixed Windows ENOENT and login timeout for Claude CLI</li>
-                <li>Fixed Windows support for killProcessOnPort</li>
-                <li>Fixed infinite thinking when opening new editor tab</li>
-                <li>Fixed first user message being wiped in new sessions</li>
-                <li>Fixed backend restart on panel reopen after idle shutdown</li>
-                <li>Fixed session resubscription on WebSocket reconnect</li>
-                <li>Fixed file path click during streaming</li>
+                <li>Replaced internal StartupManager API with public DumbService API</li>
+                <li>Replaced deprecated URL constructor with URI(...).toURL() pattern</li>
             </ul>
         """.trimIndent()
     }
