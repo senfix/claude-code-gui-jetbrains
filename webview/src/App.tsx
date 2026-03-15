@@ -7,6 +7,7 @@ import { AccountUsageModal } from './components/AccountUsageModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { OPEN_ACCOUNT_USAGE_EVENT } from './commandPalette/sections/model/AccountUsageItem';
+import 'katex/dist/katex.min.css';
 
 function AppContent() {
   useKeyboardShortcuts();

@@ -1,6 +1,7 @@
 import {Streamdown} from 'streamdown';
-import {math} from '@streamdown/math';
-import 'katex/dist/katex.min.css';
+import {createMathPlugin} from '@streamdown/math';
+
+const math = createMathPlugin({ singleDollarTextMath: true });
 import {ToolUseBlockDto} from "@/dto";
 import {Container, LabelValue, RendererProps, ToolHeader, ToolWrapper} from "./common";
 
