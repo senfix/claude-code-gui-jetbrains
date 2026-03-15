@@ -45,6 +45,8 @@ interface SessionContextValue {
   setSessionState: (state: SessionState) => void;
   setWorkingDirectory: (dir: string | null) => void;
   registerBeforeSwitch: (cb: () => void) => void;
+  /** Returns true if the session was just created locally (not restored from URL) */
+  isNewlyCreatedSession: (sessionId: string) => boolean;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -71,6 +73,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [isLoading, setIsLoading] = useState(false);
   // 세션 전환 전 호출되는 콜백 (ChatStreamContext가 등록)
   const beforeSwitchRef = useRef<(() => void) | null>(null);
+  const newlyCreatedSessionIds = useRef(new Set<string>());
   // 재연결 감지용 — 이전 연결 상태 추적 (결함 B+C 수정)
   const prevConnectedRef = useRef(false);
   const registerBeforeSwitch = useCallback((cb: () => void) => {
@@ -289,11 +292,16 @@ export function SessionProvider({ children }: SessionProviderProps) {
       messageCount: 0,
       isSidechain: false,
     });
+    newlyCreatedSessionIds.current.add(sessionId);
     setSessions(prev => [newSession, ...prev]);
 
     // URL change is the SSOT — navigating IS the session creation
     navigateToSession(sessionId);
   }, [navigateToSession]);
+
+  const isNewlyCreatedSession = useCallback((sessionId: string) => {
+    return newlyCreatedSessionIds.current.has(sessionId);
+  }, []);
 
   // LogForwarder에 현재 세션 ID 동기화
   useEffect(() => {
@@ -329,6 +337,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setSessionState,
     setWorkingDirectory,
     registerBeforeSwitch,
+    isNewlyCreatedSession,
   };
 
   return (

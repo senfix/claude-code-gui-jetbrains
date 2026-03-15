@@ -28,7 +28,7 @@ interface AppProvidersProps {
 function SessionLoader({ children }: { children: ReactNode }) {
   const { isConnected } = useApiContext();
   const { subscribe } = useBridgeContext();
-  const { loadSessions, switchSession, sessions, currentSessionId, navigateToNewSession } = useSessionContext();
+  const { loadSessions, switchSession, sessions, currentSessionId, navigateToNewSession, isNewlyCreatedSession } = useSessionContext();
   const { loadMessages } = useChatStreamContext();
   const sessionRestored = useRef(false);
 
@@ -44,6 +44,13 @@ function SessionLoader({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (sessionRestored.current || !currentSessionId || sessions.length === 0) return;
 
+    // Skip restoration for sessions just created locally via addNewSession —
+    // their messages are already in local state and JSONL doesn't exist yet.
+    if (isNewlyCreatedSession(currentSessionId)) {
+      sessionRestored.current = true;
+      return;
+    }
+
     sessionRestored.current = true;
     const sessionExists = sessions.some(s => s.id === currentSessionId);
     if (sessionExists) {
@@ -53,7 +60,7 @@ function SessionLoader({ children }: { children: ReactNode }) {
       console.warn('[AppProviders] Session from URL not found, falling back to new session:', currentSessionId);
       navigateToNewSession();
     }
-  }, [currentSessionId, sessions, switchSession, navigateToNewSession]);
+  }, [currentSessionId, sessions, switchSession, navigateToNewSession, isNewlyCreatedSession]);
 
   // Subscribe to SESSION_LOADED to load messages into chat
   // Raw JSONL entries are passed through - transformation is handled by useChatStream.loadMessages()
@@ -61,11 +68,20 @@ function SessionLoader({ children }: { children: ReactNode }) {
     return subscribe('SESSION_LOADED', (message) => {
       if (message.payload?.messages) {
         const rawMessages = message.payload.messages as LoadedMessageDto[];
+        const sid = message.payload?.sessionId as string | undefined;
+
+        // Skip empty loads for newly created sessions — their first user message
+        // hasn't been written to JSONL yet, so loading would wipe local state.
+        if (sid && isNewlyCreatedSession(sid) && rawMessages.length === 0) {
+          console.log('[AppProviders] Skipping empty SESSION_LOADED for newly created session:', sid);
+          return;
+        }
+
         console.log('[AppProviders] Session loaded, injecting raw messages:', rawMessages.length, rawMessages);
         loadMessages(rawMessages);
       }
     });
-  }, [subscribe, loadMessages]);
+  }, [subscribe, loadMessages, isNewlyCreatedSession]);
 
   return <>{children}</>;
 }
