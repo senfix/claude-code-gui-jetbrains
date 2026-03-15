@@ -16,19 +16,19 @@ import { Claude } from './core/claude';
  * - Kotlin이 Node.js를 spawn할 때 이 환경변수를 설정
  * - WEBVIEW_DIR: WebView 정적 파일 경로 (Kotlin이 추출 후 전달)
  * - Node.js는 PORT:{n}\n을 stdout 첫 줄에 출력 (Kotlin이 읽음)
- * - 이후 stdout은 JSON-RPC 전용 (Node.js → Kotlin IDE native 요청)
+ * - IDE는 /rpc WebSocket 경로로 연결하여 JSON-RPC 통신
  * - stderr는 로그 출력
  *
  * Browser (standalone) 모드: 기본값
  * - 고정 포트(19836) 사용 (PORT 환경변수로 오버라이드 가능)
  * - BrowserBridge 사용 (Vite dev server가 정적 파일 제공)
  *
- * 안전한 stdout 사용 순서:
- * 1. KotlinBridge 생성 (이 시점에는 stdout에 아무것도 쓰지 않음)
+ * 부트스트랩 순서:
+ * 1. JetBrainsBridge 생성 (WebSocket RPC 클라이언트 대기)
  * 2. WebSocket 서버 시작 (포트 확보)
  * 3. PORT:{port}\n 을 stdout에 출력 (Kotlin이 읽음)
- * 4. Kotlin이 http://localhost:{port} 로 JCEF 로드 → WebSocketConnector가 WS에 연결
- * → 레이스 컨디션 없음
+ * 4. Kotlin이 /rpc WebSocket에 연결 → JSON-RPC 채널 수립
+ * 5. Kotlin이 http://localhost:{port} 로 JCEF 로드 → /ws WebSocket 연결
  */
 
 function killProcessOnPort(port: number): void {
@@ -112,7 +112,7 @@ async function main() {
   await Claude.refresh();
 
   const bridge = isJetBrainsMode
-    ? new JetBrainsBridge(process.stdout, process.stdin)
+    ? new JetBrainsBridge()
     : new BrowserBridge();
 
   // 2. LogWebSocketServer 생성
@@ -127,8 +127,7 @@ async function main() {
   logger.setLogWs(logWs);
 
   if (isJetBrainsMode) {
-    // PORT를 stdout 첫 줄에 출력 — Kotlin이 이를 읽고 JCEF에 http://localhost:PORT 를 로드
-    // 이 시점 이후 stdout은 KotlinBridge JSON-RPC 전용
+    // PORT를 stdout 첫 줄에 출력 — Kotlin이 이를 읽고 /rpc WebSocket 연결 + JCEF 로드
     process.stdout.write(`PORT:${port}\n`);
   }
 

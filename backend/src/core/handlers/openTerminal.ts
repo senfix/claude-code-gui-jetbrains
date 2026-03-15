@@ -10,7 +10,14 @@ export async function openTerminalHandler(
 ): Promise<void> {
   try {
     const workingDir = message.payload?.['workingDir'] as string | undefined;
-    await bridge.openTerminal(workingDir || process.cwd());
+    if (!workingDir) {
+      connections.sendTo(connectionId, 'ERROR', {
+        requestId: message.requestId,
+        error: 'workingDir is required',
+      });
+      return;
+    }
+    await bridge.openTerminal(workingDir);
   } catch (err) {
     console.error('[node-backend]', 'bridge.openTerminal() failed:', err);
   }

@@ -11,10 +11,18 @@ export async function reclaimSessionHandler(
   _bridge: Bridge,
 ): Promise<void> {
   const sessionId = message.payload?.sessionId as string;
-  const workingDir = (message.payload?.workingDir as string) || process.cwd();
+  const workingDir = message.payload?.workingDir as string | undefined;
 
   if (!sessionId) {
     connections.sendTo(connectionId, 'ACK', { requestId: message.requestId });
+    return;
+  }
+
+  if (!workingDir) {
+    connections.sendTo(connectionId, 'ERROR', {
+      requestId: message.requestId,
+      error: 'workingDir is required',
+    });
     return;
   }
 

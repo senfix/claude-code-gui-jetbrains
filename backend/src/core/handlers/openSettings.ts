@@ -9,7 +9,8 @@ export async function openSettingsHandler(
   bridge: Bridge,
 ): Promise<void> {
   try {
-    await bridge.openSettings();
+    const workingDir = message.payload?.workingDir as string | undefined;
+    await bridge.openSettings(workingDir);
   } catch (err) {
     console.error('[node-backend]', 'bridge.openSettings() failed:', err);
   }

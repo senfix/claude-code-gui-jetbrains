@@ -2,16 +2,12 @@ package com.github.yhk1038.claudecodegui.bridge
 
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.EnvironmentUtil
 import kotlinx.coroutines.*
-import kotlinx.serialization.json.*
 import java.io.BufferedReader
-import java.io.BufferedWriter
 import java.io.File
 import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 
 /**
  * Manages the Node.js backend process lifecycle.
@@ -22,28 +18,22 @@ import java.io.OutputStreamWriter
  * 3. Extract WebView static resources for the WEBVIEW_DIR env var
  * 4. Spawn `node backend.mjs` with correct env vars
  * 5. Read the first stdout line `PORT:{n}\n` -> expose via [port] Deferred
- * 6. Parse subsequent stdout lines as JSON-RPC requests and dispatch to [RpcHandler]
- * 7. Forward stderr to IDE logger
- * 8. Gracefully terminate the process on dispose
+ * 6. Forward stderr to IDE logger
+ * 7. Gracefully terminate the process on dispose
+ *
+ * JSON-RPC dispatch is handled by [RpcWebSocketClient] via WebSocket /rpc endpoint.
  */
 class NodeProcessManager(
-    private val project: Project,
     private val scope: CoroutineScope
 ) : Disposable {
 
     private val logger = Logger.getInstance(NodeProcessManager::class.java)
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
 
     // Server port (fulfilled once the backend prints PORT:{n})
     private val _portDeferred = CompletableDeferred<Int>()
     val port: Deferred<Int> = _portDeferred
 
     private var process: Process? = null
-    private var stdinWriter: BufferedWriter? = null
     private var stdoutJob: Job? = null
     private var stderrJob: Job? = null
 
@@ -56,8 +46,8 @@ class NodeProcessManager(
         suspend fun openDiff(filePath: String, oldContent: String, newContent: String, toolUseId: String?)
         suspend fun applyDiff(filePath: String, newContent: String, toolUseId: String?): Boolean
         suspend fun rejectDiff(toolUseId: String?)
-        suspend fun newSession()
-        suspend fun openSettings()
+        suspend fun newSession(workingDir: String)
+        suspend fun openSettings(workingDir: String)
         suspend fun openTerminal(workingDir: String)
         suspend fun openUrl(url: String)
         suspend fun updatePlugin()
@@ -66,10 +56,8 @@ class NodeProcessManager(
 
     /**
      * Start the Node.js backend process.
-     *
-     * @param rpcHandler Implementation that handles IDE-native RPC calls
      */
-    fun start(rpcHandler: RpcHandler) {
+    fun start() {
         val nodePath = findNodeExecutable()
         if (nodePath == null) {
             logger.error("Node.js executable not found. Ensure 'node' is on PATH or installed in a well-known location.")
@@ -100,8 +88,7 @@ class NodeProcessManager(
                     if (webviewDir != null) {
                         put("WEBVIEW_DIR", webviewDir.absolutePath)
                     }
-                    // Working directory for Claude CLI sessions
-                    project.basePath?.let { put("PROJECT_DIR", it) }
+                    // PROJECT_DIR removed — workingDir is passed via WebSocket message
                 }
 
                 val pb = ProcessBuilder(nodePath, backendFile.absolutePath)
@@ -114,13 +101,11 @@ class NodeProcessManager(
                 val proc = pb.start()
                 process = proc
 
-                stdinWriter = BufferedWriter(OutputStreamWriter(proc.outputStream, Charsets.UTF_8))
-
-                // Read stdout: first line is PORT, rest are JSON-RPC
+                // Read stdout: first line is PORT, rest are logged
                 stdoutJob = scope.launch(Dispatchers.IO) {
                     val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
                     try {
-                        readStdout(reader, rpcHandler)
+                        readStdout(reader)
                     } catch (e: CancellationException) {
                         // Normal shutdown
                     } catch (e: Exception) {
@@ -166,9 +151,9 @@ class NodeProcessManager(
     /**
      * Read stdout line by line.
      * First line: PORT:{n}
-     * Subsequent lines: JSON-RPC requests
+     * Subsequent lines are logged (JSON-RPC is now handled via WebSocket /rpc).
      */
-    private suspend fun readStdout(reader: BufferedReader, rpcHandler: RpcHandler) {
+    private fun readStdout(reader: BufferedReader) {
         var portRead = false
 
         while (true) {
@@ -197,16 +182,9 @@ class NodeProcessManager(
                 continue
             }
 
-            // After PORT is read, all lines are JSON-RPC requests
+            // After PORT is read, log any subsequent stdout lines
             if (line.isBlank()) continue
-
-            scope.launch {
-                try {
-                    handleJsonRpcRequest(line, rpcHandler)
-                } catch (e: Exception) {
-                    logger.error("Error handling JSON-RPC request: $line", e)
-                }
-            }
+            logger.info("[Node.js stdout] $line")
         }
     }
 
@@ -220,165 +198,6 @@ class NodeProcessManager(
                 System.err.println("[Node.js] $line")
                 logger.info("[Node.js] $line")
             }
-        }
-    }
-
-    /**
-     * Parse and dispatch a JSON-RPC request from Node.js backend.
-     *
-     * Request format:
-     * {"jsonrpc":"2.0","id":"rpc-1","method":"OPEN_FILE","params":{"path":"/..."}}
-     *
-     * Response format (sent to stdin):
-     * {"jsonrpc":"2.0","id":"rpc-1","result":{}}\n
-     */
-    private suspend fun handleJsonRpcRequest(line: String, rpcHandler: RpcHandler) {
-        val request = try {
-            json.parseToJsonElement(line).jsonObject
-        } catch (e: Exception) {
-            logger.warn("Failed to parse JSON-RPC request: ${line.take(200)}")
-            return
-        }
-
-        val id = request["id"]?.jsonPrimitive?.content
-        val method = request["method"]?.jsonPrimitive?.content
-        val params = request["params"]?.jsonObject ?: buildJsonObject {}
-
-        if (method == null) {
-            logger.warn("JSON-RPC request missing 'method': ${line.take(200)}")
-            if (id != null) sendRpcError(id, -32600, "Missing method")
-            return
-        }
-
-        logger.debug("JSON-RPC request: method=$method, id=$id")
-
-        try {
-            val result = when (method) {
-                "OPEN_FILE" -> {
-                    val path = params["path"]?.jsonPrimitive?.content
-                        ?: throw IllegalArgumentException("Missing 'path' param")
-                    rpcHandler.openFile(path)
-                    buildJsonObject {}
-                }
-
-                "OPEN_DIFF" -> {
-                    val filePath = params["filePath"]?.jsonPrimitive?.content
-                        ?: throw IllegalArgumentException("Missing 'filePath' param")
-                    val oldContent = params["oldContent"]?.jsonPrimitive?.content ?: ""
-                    val newContent = params["newContent"]?.jsonPrimitive?.content ?: ""
-                    val toolUseId = params["toolUseId"]?.jsonPrimitive?.content
-                    rpcHandler.openDiff(filePath, oldContent, newContent, toolUseId)
-                    buildJsonObject {}
-                }
-
-                "APPLY_DIFF" -> {
-                    val filePath = params["filePath"]?.jsonPrimitive?.content
-                        ?: throw IllegalArgumentException("Missing 'filePath' param")
-                    val newContent = params["newContent"]?.jsonPrimitive?.content
-                        ?: throw IllegalArgumentException("Missing 'newContent' param")
-                    val toolUseId = params["toolUseId"]?.jsonPrimitive?.content
-                    val applied = rpcHandler.applyDiff(filePath, newContent, toolUseId)
-                    buildJsonObject { put("applied", applied) }
-                }
-
-                "REJECT_DIFF" -> {
-                    val toolUseId = params["toolUseId"]?.jsonPrimitive?.content
-                    rpcHandler.rejectDiff(toolUseId)
-                    buildJsonObject {}
-                }
-
-                "NEW_SESSION" -> {
-                    rpcHandler.newSession()
-                    buildJsonObject {}
-                }
-
-                "OPEN_SETTINGS" -> {
-                    rpcHandler.openSettings()
-                    buildJsonObject {}
-                }
-
-                "OPEN_TERMINAL" -> {
-                    val workingDir = params["workingDir"]?.jsonPrimitive?.content
-                        ?: throw IllegalArgumentException("Missing 'workingDir' param")
-                    rpcHandler.openTerminal(workingDir)
-                    buildJsonObject {}
-                }
-
-                "OPEN_URL" -> {
-                    val url = params["url"]?.jsonPrimitive?.content
-                        ?: throw IllegalArgumentException("Missing 'url' param")
-                    rpcHandler.openUrl(url)
-                    buildJsonObject {}
-                }
-
-                "UPDATE_PLUGIN" -> {
-                    rpcHandler.updatePlugin()
-                    buildJsonObject {}
-                }
-
-                "REQUIRES_RESTART" -> {
-                    val requires = rpcHandler.requiresRestart()
-                    buildJsonObject { put("requiresRestart", requires) }
-                }
-
-                else -> {
-                    logger.warn("Unknown JSON-RPC method: $method")
-                    if (id != null) sendRpcError(id, -32601, "Method not found: $method")
-                    return
-                }
-            }
-
-            if (id != null) {
-                sendRpcResult(id, result)
-            }
-        } catch (e: Exception) {
-            logger.error("Error executing JSON-RPC method '$method'", e)
-            if (id != null) {
-                sendRpcError(id, -32000, e.message ?: "Internal error")
-            }
-        }
-    }
-
-    /**
-     * Send a JSON-RPC success response to the Node.js process via stdin.
-     */
-    private fun sendRpcResult(id: String, result: JsonObject) {
-        val response = buildJsonObject {
-            put("jsonrpc", "2.0")
-            put("id", id)
-            put("result", result)
-        }
-        writeToStdin(json.encodeToString(JsonObject.serializer(), response))
-    }
-
-    /**
-     * Send a JSON-RPC error response to the Node.js process via stdin.
-     */
-    private fun sendRpcError(id: String, code: Int, message: String) {
-        val response = buildJsonObject {
-            put("jsonrpc", "2.0")
-            put("id", id)
-            putJsonObject("error") {
-                put("code", code)
-                put("message", message)
-            }
-        }
-        writeToStdin(json.encodeToString(JsonObject.serializer(), response))
-    }
-
-    /**
-     * Write a line to the process stdin.
-     */
-    @Synchronized
-    private fun writeToStdin(line: String) {
-        try {
-            stdinWriter?.let { writer ->
-                writer.write(line)
-                writer.newLine()
-                writer.flush()
-            } ?: logger.warn("Cannot write to stdin: writer is null")
-        } catch (e: Exception) {
-            logger.error("Failed to write to Node.js stdin", e)
         }
     }
 
@@ -522,7 +341,7 @@ class NodeProcessManager(
      */
     private fun extractBackendFromJar(): File? {
         return try {
-            val tempDir = File(System.getProperty("java.io.tmpdir"), "claude-code-backend-${project.locationHash}")
+            val tempDir = File(System.getProperty("java.io.tmpdir"), "claude-code-backend")
 
             // Always re-extract for latest version
             if (tempDir.exists()) {
@@ -574,7 +393,7 @@ class NodeProcessManager(
 
         // Production: extract from JAR
         return try {
-            val tempDir = File(System.getProperty("java.io.tmpdir"), "claude-code-webview-${project.locationHash}")
+            val tempDir = File(System.getProperty("java.io.tmpdir"), "claude-code-webview")
 
             if (tempDir.exists()) {
                 tempDir.deleteRecursively()
@@ -741,10 +560,9 @@ class NodeProcessManager(
      */
     fun detach() {
         logger.info("Detaching from NodeProcessManager (process stays alive)")
-        // Intentionally NOT closing stdin or cancelling jobs.
+        // Intentionally NOT cancelling jobs.
         // Pipes must stay open so Node.js doesn't receive SIGPIPE.
         process = null
-        stdinWriter = null
         logger.info("NodeProcessManager detached")
     }
 
@@ -753,12 +571,6 @@ class NodeProcessManager(
 
         stdoutJob?.cancel()
         stderrJob?.cancel()
-
-        try {
-            stdinWriter?.close()
-        } catch (e: Exception) {
-            logger.debug("Error closing stdin writer: ${e.message}")
-        }
 
         process?.let { proc ->
             if (proc.isAlive) {
@@ -777,7 +589,6 @@ class NodeProcessManager(
         }
 
         process = null
-        stdinWriter = null
         logger.info("NodeProcessManager disposed")
     }
 

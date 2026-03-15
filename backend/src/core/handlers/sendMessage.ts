@@ -11,8 +11,16 @@ export async function sendMessageHandler(
   _bridge: Bridge,
 ): Promise<void> {
   const content = message.payload?.content as string;
-  const workingDir = (message.payload?.workingDir as string) || process.cwd();
+  const workingDir = message.payload?.workingDir as string | undefined;
   const msgSessionId = message.payload?.sessionId as string | undefined;
+
+  if (!workingDir) {
+    connections.sendTo(connectionId, 'ERROR', {
+      requestId: message.requestId,
+      error: 'workingDir is required',
+    });
+    return;
+  }
   const inputMode = message.payload?.inputMode as string;
   const resolvedSessionId = msgSessionId || generateSessionId();
   const attachments = message.payload?.attachments as Array<

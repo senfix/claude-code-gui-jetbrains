@@ -11,6 +11,7 @@ import com.intellij.openapi.options.ShowSettingsUtil
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.jcef.JBCefBrowser
@@ -62,7 +63,7 @@ class ClaudeCodePanel(
     // IME workaround: flag to prevent double-wrapping on subsequent page loads
     private var imeWorkaroundInstalled = false
 
-    private val backendService = NodeBackendService.getInstance(project)
+    private val backendService = NodeBackendService.getInstance()
     private val diffService: DiffService = DiffService.getInstance(project)
 
     // Loading label
@@ -82,7 +83,7 @@ class ClaudeCodePanel(
         setupBrowserHandlers()
 
         // Phase 3: Start Node.js backend and load URL once ready
-        backendService.ensureStarted(panelId, createRpcHandler())
+        backendService.ensureStarted(project.basePath ?: "", panelId, createRpcHandler())
         scope.launch {
             try {
                 val port = backendService.awaitPort()
@@ -440,17 +441,19 @@ class ClaudeCodePanel(
                 // Diff viewer close is handled by user manually; nothing to do here
             }
 
-            override suspend fun newSession() {
+            override suspend fun newSession(workingDir: String) {
                 ApplicationManager.getApplication().invokeLater {
-                    OpenClaudeCodeAction.openSession(project, UUID.randomUUID().toString())
-                    logger.info("Opened new Claude Code session tab")
+                    val targetProject = findProjectByBasePath(workingDir) ?: project
+                    OpenClaudeCodeAction.openSession(targetProject, UUID.randomUUID().toString())
+                    logger.info("Opened new Claude Code session tab (workingDir=$workingDir)")
                 }
             }
 
-            override suspend fun openSettings() {
+            override suspend fun openSettings(workingDir: String) {
                 ApplicationManager.getApplication().invokeLater {
-                    OpenClaudeCodeAction.openSession(project, UUID.randomUUID().toString(), "/settings/general")
-                    logger.info("Opened Claude Code settings in editor tab")
+                    val targetProject = findProjectByBasePath(workingDir) ?: project
+                    OpenClaudeCodeAction.openSession(targetProject, UUID.randomUUID().toString(), "/settings/general")
+                    logger.info("Opened Claude Code settings in editor tab (workingDir=$workingDir)")
                 }
             }
 
@@ -503,6 +506,19 @@ class ClaudeCodePanel(
                 return true
             }
         }
+    }
+
+    // ─── Project Helpers ─────────────────────────────────────────────
+
+    /**
+     * Find an open project by its base path.
+     * Used by RPC handlers to route actions to the correct project
+     * when the workingDir provided by the Node.js backend identifies a specific project.
+     */
+    private fun findProjectByBasePath(basePath: String): Project? {
+        if (basePath.isBlank()) return null
+        return ProjectManager.getInstance().openProjects
+            .firstOrNull { it.basePath == basePath }
     }
 
     // ─── Terminal Helpers ────────────────────────────────────────────
@@ -607,7 +623,7 @@ class ClaudeCodePanel(
 
     override fun dispose() {
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
-        backendService.releasePanel(panelId)
+        backendService.releasePanel(project.basePath ?: "", panelId)
         Disposer.dispose(cursorQuery)
         Disposer.dispose(browser)
         logger.info("ClaudeCodePanel disposed")

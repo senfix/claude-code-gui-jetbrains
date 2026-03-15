@@ -26,8 +26,8 @@
         <projectService
             serviceImplementation="com.github.yhk1038.claudecodegui.services.SessionBroadcastService"/>
 
-        <!-- Project service for Node.js backend process management (singleton per project) -->
-        <projectService
+        <!-- Application service for Node.js backend process management (singleton per computer) -->
+        <applicationService
             serviceImplementation="com.github.yhk1038.claudecodegui.services.NodeBackendService"/>
 
         <!-- Application service for CLI management -->

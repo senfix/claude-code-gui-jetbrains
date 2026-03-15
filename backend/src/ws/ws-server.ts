@@ -135,6 +135,7 @@ export function startWebSocketServer(
 
     // wss와 connections는 한 번만 생성
     const wss = new WebSocketServer({ noServer: true });
+    const rpcWss = new WebSocketServer({ noServer: true });
 
     // WebSocket 연결 핸들러 — 한 번만 등록
     wss.on('connection', (ws: WebSocket) => {
@@ -191,6 +192,12 @@ export function startWebSocketServer(
         wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
           wss.emit('connection', ws, request);
         });
+      } else if (url === '/rpc') {
+        rpcWss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
+          if ('addRpcClient' in bridge && typeof (bridge as any).addRpcClient === 'function') {
+            (bridge as any).addRpcClient(ws);
+          }
+        });
       } else if (url === '/logs' && logWs) {
         logWs.handleUpgrade(request, socket, head);
       } else {
@@ -213,6 +220,7 @@ export function startWebSocketServer(
         logWs,
         close: () => {
           logWs?.close();
+          rpcWss.close();
           wss.close();
           httpServer.close();
         },

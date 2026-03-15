@@ -8,8 +8,10 @@ export function getWorkingDirHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): void {
+  // Single-process mode: no default workingDir.
+  // Clients must provide workingDir via URL params or project selection.
   connections.sendTo(connectionId, 'ACK', {
     requestId: message.requestId,
-    workingDir: process.cwd(),
+    workingDir: null,
   });
 }

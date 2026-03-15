@@ -1,92 +1,112 @@
 package com.github.yhk1038.claudecodegui.services
 
 import com.github.yhk1038.claudecodegui.bridge.NodeProcessManager
+import com.github.yhk1038.claudecodegui.bridge.RpcWebSocketClient
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.project.Project
 import kotlinx.coroutines.*
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Project-level singleton service that manages a single Node.js backend process.
+ * Application-level singleton service that manages a single Node.js backend process.
  *
  * Instead of each ClaudeCodePanel spawning its own NodeProcessManager,
- * all panels share this service so that:
- * - Only one Node.js process runs per project
+ * all panels across all projects share this service so that:
+ * - Only one Node.js process runs per computer (application level)
  * - Retry creates a new manager in the service field, not a local variable
  * - All panels connect to the same port
- * - RPC messages are dispatched to the correct panel via CompositeRpcHandler
+ * - RPC messages are dispatched to the correct project handler via CompositeRpcHandler
+ *   using projectBasePath + panelId as the registry key
  * - If a Node.js backend is already running on the default port, it is reused
  *   instead of spawning a new process (Node.js manages its own lifecycle)
  */
-@Service(Service.Level.PROJECT)
-class NodeBackendService(private val project: Project) : Disposable {
+@Service(Service.Level.APP)
+class NodeBackendService : Disposable {
 
     private val logger = Logger.getInstance(NodeBackendService::class.java)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private var nodeProcessManager: NodeProcessManager? = null
+    private var rpcClient: RpcWebSocketClient? = null
     private var portDeferred = CompletableDeferred<Int>()
 
-    // Per-panel RPC handler registry
-    private val rpcHandlers = ConcurrentHashMap<String, NodeProcessManager.RpcHandler>()
+    // Per-panel RPC handler registry: key = "projectBasePath::panelId"
+    // Value = Pair(projectBasePath, handler)
+    private val rpcHandlers = ConcurrentHashMap<String, Pair<String, NodeProcessManager.RpcHandler>>()
 
     /**
-     * Delegates RPC calls to the first registered panel handler.
-     * When multiple panels are open, the first one in iteration order receives the message.
+     * Delegates RPC calls to the most specific handler based on file path or workingDir.
+     * Uses longest-prefix matching on projectBasePath to find the correct project's handler.
      */
     private inner class CompositeRpcHandler : NodeProcessManager.RpcHandler {
-        private fun activeHandler(): NodeProcessManager.RpcHandler? =
-            rpcHandlers.values.firstOrNull()
+
+        private fun handlerForPath(path: String?): NodeProcessManager.RpcHandler? {
+            if (path == null) return rpcHandlers.values.firstOrNull()?.second
+            return rpcHandlers.values
+                .filter { (basePath, _) -> path.startsWith(basePath) }
+                .maxByOrNull { (basePath, _) -> basePath.length }
+                ?.second
+                ?: rpcHandlers.values.firstOrNull()?.second
+        }
+
+        private fun handlerForWorkingDir(workingDir: String?): NodeProcessManager.RpcHandler? {
+            if (workingDir == null) return rpcHandlers.values.firstOrNull()?.second
+            return rpcHandlers.values
+                .filter { (basePath, _) -> workingDir.startsWith(basePath) }
+                .maxByOrNull { (basePath, _) -> basePath.length }
+                ?.second
+                ?: rpcHandlers.values.firstOrNull()?.second
+        }
 
         override suspend fun openFile(path: String) {
-            activeHandler()?.openFile(path)
-                ?: logger.warn("No active panel handler for openFile")
+            handlerForPath(path)?.openFile(path)
+                ?: logger.warn("No handler for openFile: $path")
         }
 
         override suspend fun openDiff(filePath: String, oldContent: String, newContent: String, toolUseId: String?) {
-            activeHandler()?.openDiff(filePath, oldContent, newContent, toolUseId)
-                ?: logger.warn("No active panel handler for openDiff")
+            handlerForPath(filePath)?.openDiff(filePath, oldContent, newContent, toolUseId)
+                ?: logger.warn("No handler for openDiff: $filePath")
         }
 
         override suspend fun applyDiff(filePath: String, newContent: String, toolUseId: String?): Boolean {
-            return activeHandler()?.applyDiff(filePath, newContent, toolUseId)
-                ?: run { logger.warn("No active panel handler for applyDiff"); false }
+            return handlerForPath(filePath)?.applyDiff(filePath, newContent, toolUseId)
+                ?: run { logger.warn("No handler for applyDiff: $filePath"); false }
         }
 
         override suspend fun rejectDiff(toolUseId: String?) {
-            activeHandler()?.rejectDiff(toolUseId)
+            rpcHandlers.values.firstOrNull()?.second?.rejectDiff(toolUseId)
                 ?: logger.warn("No active panel handler for rejectDiff")
         }
 
-        override suspend fun newSession() {
-            activeHandler()?.newSession()
-                ?: logger.warn("No active panel handler for newSession")
+        override suspend fun newSession(workingDir: String) {
+            handlerForWorkingDir(workingDir)?.newSession(workingDir)
+                ?: logger.warn("No handler for newSession: $workingDir")
         }
 
-        override suspend fun openSettings() {
-            activeHandler()?.openSettings()
-                ?: logger.warn("No active panel handler for openSettings")
+        override suspend fun openSettings(workingDir: String) {
+            handlerForWorkingDir(workingDir)?.openSettings(workingDir)
+                ?: logger.warn("No handler for openSettings: $workingDir")
         }
 
         override suspend fun openTerminal(workingDir: String) {
-            activeHandler()?.openTerminal(workingDir)
-                ?: logger.warn("No active panel handler for openTerminal")
+            handlerForWorkingDir(workingDir)?.openTerminal(workingDir)
+                ?: logger.warn("No handler for openTerminal: $workingDir")
         }
 
         override suspend fun openUrl(url: String) {
-            activeHandler()?.openUrl(url)
+            rpcHandlers.values.firstOrNull()?.second?.openUrl(url)
                 ?: logger.warn("No active panel handler for openUrl")
         }
 
         override suspend fun updatePlugin() {
-            activeHandler()?.updatePlugin()
+            rpcHandlers.values.firstOrNull()?.second?.updatePlugin()
                 ?: logger.warn("No active panel handler for updatePlugin")
         }
 
         override suspend fun requiresRestart(): Boolean {
-            return activeHandler()?.requiresRestart()
+            return rpcHandlers.values.firstOrNull()?.second?.requiresRestart()
                 ?: run { logger.warn("No active panel handler for requiresRestart"); true }
         }
     }
@@ -94,12 +114,13 @@ class NodeBackendService(private val project: Project) : Disposable {
     /**
      * Ensure the backend is started. Called by each panel on init.
      * First call starts the Node.js process; subsequent calls are no-ops.
-     * Registers the panel's RPC handler under its panelId.
+     * Registers the panel's RPC handler under "projectBasePath::panelId".
      */
     @Synchronized
-    fun ensureStarted(panelId: String, rpcHandler: NodeProcessManager.RpcHandler) {
-        rpcHandlers[panelId] = rpcHandler
-        if (nodeProcessManager == null) {
+    fun ensureStarted(projectBasePath: String, panelId: String, rpcHandler: NodeProcessManager.RpcHandler) {
+        val key = "$projectBasePath::$panelId"
+        rpcHandlers[key] = Pair(projectBasePath, rpcHandler)
+        if (nodeProcessManager == null && rpcClient == null) {
             startBackend()
         } else if (nodeProcessManager?.isAlive == false && !isBackendAlreadyRunning(DEFAULT_PORT)) {
             logger.info("Node.js backend process is dead, restarting...")
@@ -127,9 +148,10 @@ class NodeBackendService(private val project: Project) : Disposable {
      * Removes the panel's RPC handler from the registry.
      * Node.js manages its own lifecycle — no shutdown scheduling here.
      */
-    fun releasePanel(panelId: String) {
-        rpcHandlers.remove(panelId)
-        logger.info("Panel released: $panelId (remaining handlers: ${rpcHandlers.size})")
+    fun releasePanel(projectBasePath: String, panelId: String) {
+        val key = "$projectBasePath::$panelId"
+        rpcHandlers.remove(key)
+        logger.info("Panel released: $key (remaining handlers: ${rpcHandlers.size})")
         // Node.js manages its own lifecycle — no shutdown scheduling here
     }
 
@@ -139,23 +161,53 @@ class NodeBackendService(private val project: Project) : Disposable {
             logger.info("Reusing existing Node.js backend on port $DEFAULT_PORT")
             portDeferred = CompletableDeferred()
             portDeferred.complete(DEFAULT_PORT)
+            connectRpcWebSocket(DEFAULT_PORT)
             return
         }
 
         portDeferred = CompletableDeferred()
-        val manager = NodeProcessManager(project, scope)
+        val manager = NodeProcessManager(scope)
         nodeProcessManager = manager
-        manager.start(CompositeRpcHandler())
+        manager.start()
         scope.launch {
             try {
                 val port = manager.port.await()
                 portDeferred.complete(port)
                 logger.info("Node.js backend started on port $port")
+                connectRpcWebSocket(port)
             } catch (e: Exception) {
                 portDeferred.completeExceptionally(e)
                 logger.error("Failed to start Node.js backend", e)
             }
         }
+    }
+
+    /**
+     * Connect the RPC WebSocket client to the backend's /rpc endpoint.
+     * This replaces the old stdout/stdin JSON-RPC communication.
+     */
+    private fun connectRpcWebSocket(port: Int) {
+        rpcClient?.dispose()
+        val client = RpcWebSocketClient(scope, CompositeRpcHandler()) {
+            // Backend seems dead — force restart
+            forceRestart()
+        }
+        rpcClient = client
+        client.connect(port)
+        logger.info("RPC WebSocket client connecting to port $port")
+    }
+
+    /**
+     * Force-restart the backend when the RPC WebSocket client detects
+     * persistent connection failures (stale/dead backend).
+     */
+    @Synchronized
+    private fun forceRestart() {
+        logger.warn("Forcing backend restart due to persistent RPC connection failure")
+        stopBackend()
+        nodeProcessManager = null
+        rpcClient = null
+        startBackend()
     }
 
     /**
@@ -173,6 +225,8 @@ class NodeBackendService(private val project: Project) : Disposable {
      * Used by restart() to ensure a clean slate.
      */
     private fun stopBackend() {
+        rpcClient?.dispose()
+        rpcClient = null
         nodeProcessManager?.dispose()
         nodeProcessManager = null
     }
@@ -197,11 +251,13 @@ class NodeBackendService(private val project: Project) : Disposable {
     }
 
     override fun dispose() {
-        // IDE is shutting down — detach from backend, don't kill it.
+        // IDE is shutting down — dispose RPC client and detach from backend.
         // Browser clients may still be connected; Node.js will self-exit
         // via idle shutdown (60s) when all WebSocket connections close.
         // Do NOT cancel scope — cancelling coroutines would close stdout/stderr
         // pipes, causing SIGPIPE in the Node.js process. JVM shutdown handles cleanup.
+        rpcClient?.dispose()
+        rpcClient = null
         detachBackend()
         logger.info("NodeBackendService disposed (backend detached, not killed)")
     }
@@ -209,7 +265,7 @@ class NodeBackendService(private val project: Project) : Disposable {
     companion object {
         const val DEFAULT_PORT = 19836
 
-        fun getInstance(project: Project): NodeBackendService =
-            project.getService(NodeBackendService::class.java)
+        fun getInstance(): NodeBackendService =
+            ApplicationManager.getApplication().getService(NodeBackendService::class.java)
     }
 }

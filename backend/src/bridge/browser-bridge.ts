@@ -40,11 +40,11 @@ export class BrowserBridge implements Bridge {
     // no-op
   }
 
-  async newSession(): Promise<void> {
+  async newSession(_workingDir?: string): Promise<void> {
     // no-op: handled by session reset in browser mode
   }
 
-  async openSettings(): Promise<void> {
+  async openSettings(_workingDir?: string): Promise<void> {
     // no-op
   }
 

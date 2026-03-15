@@ -10,8 +10,17 @@ export async function loadSessionHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  const workingDir = (message.payload?.workingDir as string) || process.cwd();
+  const workingDir = message.payload?.workingDir as string | undefined;
   const sessionId = message.payload?.sessionId as string;
+
+  if (!workingDir) {
+    connections.sendTo(connectionId, 'ERROR', {
+      requestId: message.requestId,
+      error: 'workingDir is required',
+    });
+    return;
+  }
+
   if (sessionId) {
     // 기존 세션 로딩 → 다음 spawn 시 --resume 사용하도록 마킹
     markSessionAsSpawned(sessionId);

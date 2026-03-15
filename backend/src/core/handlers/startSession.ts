@@ -9,8 +9,16 @@ export async function startSessionHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  const workingDir = (message.payload?.workingDir as string) || process.cwd();
+  const workingDir = message.payload?.workingDir as string | undefined;
   const sessionId = message.payload?.sessionId as string | undefined;
+
+  if (!workingDir) {
+    connections.sendTo(connectionId, 'ERROR', {
+      requestId: message.requestId,
+      error: 'workingDir is required',
+    });
+    return;
+  }
   const inputMode = (message.payload?.inputMode as string) || 'ask_before_edit';
 
   try {

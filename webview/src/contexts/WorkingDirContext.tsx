@@ -16,7 +16,7 @@ interface Props {
 
 export function WorkingDirProvider(props: Props) {
   const { children } = props;
-  const { send, isConnected } = useBridgeContext();
+  const { isConnected } = useBridgeContext();
   const api = useApi();
   const location = useLocation();
 
@@ -46,19 +46,14 @@ export function WorkingDirProvider(props: Props) {
     }
   }, [api, workingDirectory]);
 
-  // workingDir가 없는 상태로 연결되면 백엔드에서 process.cwd()를 가져옴
-  // 단, 루트 경로(/)에서는 프로젝트 선택 화면이므로 자동 복원하지 않음
+  // Single-process mode: no default workingDir from backend.
+  // If no workingDir in URL params, redirect to project selector.
   useEffect(() => {
     if (!isConnected || workingDirectory || location.pathname === '/') return;
 
-    send('GET_WORKING_DIR', {}).then((payload: { workingDir: string }) => {
-      if (payload?.workingDir) {
-        setWorkingDirectory(payload.workingDir);
-      }
-    }).catch((error: unknown) => {
-      console.error('[WorkingDirContext] Failed to get working directory:', error);
-    });
-  }, [isConnected, workingDirectory, location.pathname, send, setWorkingDirectory]);
+    // No workingDir available — navigate to project selector
+    window.location.href = '/';
+  }, [isConnected, workingDirectory, location.pathname]);
 
   const value: WorkingDirContextValue = {
     workingDirectory,

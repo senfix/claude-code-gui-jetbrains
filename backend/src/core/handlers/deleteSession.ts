@@ -33,9 +33,17 @@ export async function deleteSessionHandler(
       return;
     }
 
-    const sessionsDir = await getProjectSessionsPath(
-      (message.payload?.workingDir as string) || process.cwd(),
-    );
+    const workingDir = message.payload?.workingDir as string | undefined;
+    if (!workingDir) {
+      connections.sendTo(connectionId, 'ACK', {
+        requestId: message.requestId,
+        status: 'error',
+        error: 'workingDir is required',
+      });
+      return;
+    }
+
+    const sessionsDir = await getProjectSessionsPath(workingDir);
     const sessionFile = resolve(sessionsDir, `${sessionId}.jsonl`);
 
     // Ensure resolved path stays within sessionsDir

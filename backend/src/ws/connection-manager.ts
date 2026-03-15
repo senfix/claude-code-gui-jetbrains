@@ -197,7 +197,7 @@ export class ConnectionManager {
     return this.sessionRegistry.get(sessionId);
   }
 
-  getOrCreateSession(sessionId: string): SessionRecord {
+  getOrCreateSession(sessionId: string, workingDir?: string): SessionRecord {
     let session = this.sessionRegistry.get(sessionId);
     if (!session) {
       session = {
@@ -205,7 +205,7 @@ export class ConnectionManager {
         process: null,
         subscribers: new Set(),
         buffer: '',
-        workingDir: process.cwd(),
+        workingDir: workingDir ?? '',
       };
       this.sessionRegistry.set(sessionId, session);
     }

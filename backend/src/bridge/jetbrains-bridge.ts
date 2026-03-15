@@ -1,6 +1,5 @@
-import type { Readable, Writable } from 'stream';
-import { createInterface } from 'readline';
 import type { Bridge } from './bridge-interface';
+import type { WebSocket } from 'ws';
 
 interface JsonRpcRequest {
   jsonrpc: '2.0';
@@ -25,27 +24,25 @@ interface PendingRequest {
 const REQUEST_TIMEOUT_MS = 10_000;
 
 /**
- * Bridge that communicates with the Kotlin IDE host via stdio JSON-RPC.
+ * Bridge that communicates with IDE hosts via WebSocket JSON-RPC.
  *
- * - Sends JSON-RPC requests to `outStream` (Node.js stdout -> Kotlin reads)
- * - Reads JSON-RPC responses from `inStream` (Kotlin writes -> Node.js stdin)
+ * IDE connects to /rpc WebSocket endpoint; this bridge sends JSON-RPC requests
+ * to connected IDE clients and receives responses.
+ *
+ * Unlike the old stdio-based approach, WebSocket allows reconnection —
+ * if the IDE restarts, it can reconnect to the already-running backend.
  */
 export class JetBrainsBridge implements Bridge {
   private idCounter = 0;
   private pendingRequests = new Map<string, PendingRequest>();
+  private rpcClients = new Set<WebSocket>();
 
-  constructor(
-    private outStream: Writable,
-    private inStream: Readable,
-  ) {
-    this.listenForResponses();
-  }
+  addRpcClient(ws: WebSocket): void {
+    this.rpcClients.add(ws);
+    console.error('[node-backend]', 'RPC client connected');
 
-  private listenForResponses(): void {
-    const rl = createInterface({ input: this.inStream });
-
-    rl.on('line', (line: string) => {
-      const trimmed = line.trim();
+    ws.on('message', (data: Buffer) => {
+      const trimmed = data.toString().trim();
       if (!trimmed) return;
 
       let response: JsonRpcResponse;
@@ -70,10 +67,28 @@ export class JetBrainsBridge implements Bridge {
         pending.resolve(response.result ?? {});
       }
     });
+
+    ws.on('close', () => {
+      this.rpcClients.delete(ws);
+      console.error('[node-backend]', 'RPC client disconnected');
+    });
+  }
+
+  private getRpcClient(): WebSocket | null {
+    for (const client of this.rpcClients) {
+      if (client.readyState === 1) return client;
+    }
+    return null;
   }
 
   private request(method: string, params: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     return new Promise<Record<string, unknown>>((resolve, reject) => {
+      const client = this.getRpcClient();
+      if (!client) {
+        reject(new Error(`No RPC client connected — cannot send JSON-RPC request "${method}"`));
+        return;
+      }
+
       const id = `rpc-${++this.idCounter}`;
 
       const timer = setTimeout(() => {
@@ -90,7 +105,7 @@ export class JetBrainsBridge implements Bridge {
         params,
       };
 
-      this.outStream.write(JSON.stringify(request) + '\n');
+      client.send(JSON.stringify(request) + '\n');
     });
   }
 
@@ -120,12 +135,12 @@ export class JetBrainsBridge implements Bridge {
     await this.request('REJECT_DIFF', params ?? {});
   }
 
-  async newSession(): Promise<void> {
-    await this.request('NEW_SESSION');
+  async newSession(workingDir?: string): Promise<void> {
+    await this.request('NEW_SESSION', workingDir ? { workingDir } : {});
   }
 
-  async openSettings(): Promise<void> {
-    await this.request('OPEN_SETTINGS');
+  async openSettings(workingDir?: string): Promise<void> {
+    await this.request('OPEN_SETTINGS', workingDir ? { workingDir } : {});
   }
 
   async openTerminal(workingDir: string): Promise<void> {

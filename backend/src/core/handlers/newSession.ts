@@ -12,7 +12,8 @@ export async function newSessionHandler(
   console.error('[node-backend]', 'Client unsubscribed, will create new session on next message');
 
   try {
-    await bridge.newSession();
+    const workingDir = message.payload?.workingDir as string | undefined;
+    await bridge.newSession(workingDir);
   } catch (err) {
     console.error('[node-backend]', 'bridge.newSession() failed:', err);
   }

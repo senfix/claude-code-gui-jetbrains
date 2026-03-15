@@ -9,10 +9,16 @@ export async function getSessionsHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  const payloadWorkingDir = message.payload?.workingDir as string | undefined;
-  const workingDir = payloadWorkingDir || process.cwd();
+  const workingDir = message.payload?.workingDir as string | undefined;
 
-  console.error('[getSessions]', 'payload.workingDir:', payloadWorkingDir ?? '(not provided, using cwd)');
+  if (!workingDir) {
+    connections.sendTo(connectionId, 'ERROR', {
+      requestId: message.requestId,
+      error: 'workingDir is required',
+    });
+    return;
+  }
+
   console.error('[getSessions]', 'resolved workingDir:', workingDir);
 
   const sessions = await getSessionsList(workingDir);
