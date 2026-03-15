@@ -76,6 +76,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const newlyCreatedSessionIds = useRef(new Set<string>());
   // 재연결 감지용 — 이전 연결 상태 추적 (결함 B+C 수정)
   const prevConnectedRef = useRef(false);
+  const hasEverConnectedRef = useRef(false);
   const registerBeforeSwitch = useCallback((cb: () => void) => {
     beforeSwitchRef.current = cb;
   }, []);
@@ -117,18 +118,42 @@ export function SessionProvider({ children }: SessionProviderProps) {
     return () => window.removeEventListener('kotlinBridgeReady', handleBridgeReady);
   }, []);
 
-  // WebSocket 재연결 시 현재 세션 재구독 (결함 B+C 수정)
-  // JCEF 탭 전환으로 연결이 끊겼다 복구되면 새 connectionId로 SESSION_CHANGE를 전송해
-  // 백엔드가 해당 연결을 올바른 세션에 구독시키도록 한다.
+  // WebSocket 재연결 시 세션 복구 (결함 B+C + 스트리밍 복구)
+  // JCEF 탭 전환으로 연결이 끊겼다 복구되면:
+  // 1. 스트리밍/메시지 상태 초기화 (무한 "생각 중" 방지)
+  // 2. SESSION_CHANGE로 세션 재구독
+  // 3. 세션 히스토리를 JSONL에서 재로드
   useEffect(() => {
-    if (isConnected && !prevConnectedRef.current && currentSessionId) {
-      send('SESSION_CHANGE', { sessionId: currentSessionId }).catch((error: unknown) => {
-        console.error('[SessionContext] Failed to resubscribe session on reconnect:', error);
-      });
-      console.log('[SessionContext] Resubscribed to session on reconnect:', currentSessionId);
-    }
+    const wasConnected = prevConnectedRef.current;
     prevConnectedRef.current = isConnected;
-  }, [isConnected, currentSessionId, send]);
+
+    if (!isConnected) return;
+
+    // 최초 연결은 ChatPage의 기존 로직이 처리
+    if (!hasEverConnectedRef.current) {
+      hasEverConnectedRef.current = true;
+      return;
+    }
+
+    // 재연결 (isConnected: false → true 전이, 최초 제외)
+    if (!wasConnected && currentSessionId) {
+      console.log('[SessionContext] Reconnected — recovering session:', currentSessionId);
+
+      // 1. 스트리밍/메시지 상태 초기화 (ChatStreamContext에서 등록한 콜백)
+      beforeSwitchRef.current?.();
+      setSessionState(SessionState.Idle);
+
+      // 2. 세션 재구독
+      send('SESSION_CHANGE', { sessionId: currentSessionId }).catch((error: unknown) => {
+        console.error('[SessionContext] Failed to resubscribe on reconnect:', error);
+      });
+
+      // 3. 세션 히스토리 재로드 — JSONL에서 완료된 메시지를 복원
+      api.sessions.load(currentSessionId).catch((error: unknown) => {
+        console.error('[SessionContext] Failed to reload session on reconnect:', error);
+      });
+    }
+  }, [isConnected, currentSessionId, send, api.sessions]);
 
   // Navigation helpers
   const navigateToSession = useCallback((sessionId: string) => {

@@ -15,8 +15,8 @@ export class JetBrainsAdapter implements IdeAdapter {
   }
 
   async openNewTab(): Promise<void> {
-    await getBridge().request('NEW_SESSION');
-    console.log('[JetBrainsAdapter] Sent NEW_SESSION via WebSocket bridge');
+    await getBridge().request('OPEN_NEW_TAB');
+    console.log('[JetBrainsAdapter] Sent OPEN_NEW_TAB via WebSocket bridge');
   }
 
   async openSettings(): Promise<void> {
