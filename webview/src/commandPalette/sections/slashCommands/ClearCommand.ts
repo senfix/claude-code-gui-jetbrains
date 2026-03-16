@@ -6,14 +6,11 @@ export class ClearCommand extends SlashCommand {
   readonly description = 'Clear conversation';
 
   async execute(): Promise<void> {
-    const { chatStream, session } = this.getServices();
+    const services = this.getServices();
 
-    if (chatStream.isStreaming) {
-      chatStream.stop();
-    }
-
-    chatStream.resetForSessionSwitch();
-    session.resetToNewSession();
+    if (services.chatStream.isStreaming) services.chatStream.stop();
+    services.chatStream.resetForSessionSwitch();
+    services.session.resetToNewSession();
   }
 
   bindKeyboard(e: KeyboardEvent): boolean {
