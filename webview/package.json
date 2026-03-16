@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
-    "@streamdown/math": "^1.0.2",
     "@tippyjs/react": "^4.2.6",
     "@vscode/codicons": "^0.0.44",
     "class-transformer": "^0.5.1",
@@ -26,6 +25,8 @@
     "react-hot-toast": "^2.6.0",
     "react-router-dom": "^7.13.1",
     "reflect-metadata": "^0.2.2",
+    "rehype-katex": "^7.0.1",
+    "remark-math-extended": "^6.1.0",
     "streamdown": "^2.1.0",
     "tippy.js": "^6.3.7",
     "unidiff": "^1.0.4"

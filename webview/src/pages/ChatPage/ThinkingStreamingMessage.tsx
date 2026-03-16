@@ -1,8 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {Streamdown} from 'streamdown';
-import {createMathPlugin} from '@streamdown/math';
-
-const math = createMathPlugin({ singleDollarTextMath: true });
+import {math} from '../../utils/mathPlugin';
 import {isInsideCodeBlock, isMarkdownComplete} from '../../utils/markdownParser';
 import './streaming.css';
 import {ToolWrapper} from "@/pages/ChatPage/message-renderers/ToolRenderers/common";

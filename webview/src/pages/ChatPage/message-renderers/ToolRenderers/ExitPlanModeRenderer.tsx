@@ -1,7 +1,5 @@
 import {Streamdown} from 'streamdown';
-import {createMathPlugin} from '@streamdown/math';
-
-const math = createMathPlugin({ singleDollarTextMath: true });
+import {math} from '@/utils/mathPlugin';
 import {ToolUseBlockDto} from "@/dto";
 import {Container, LabelValue, RendererProps, ToolHeader, ToolWrapper} from "./common";
 
