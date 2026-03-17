@@ -11,6 +11,7 @@ import { getLogForwarder } from '../api/logging';
 import { toTitle } from '../mappers/sessionTransformer';
 import { Route, routeToPath, sessionToPath, parseSessionIdFromPath, withWorkingDir } from '../router/routes';
 import { InputMode, getAvailableModes } from '../types/chatInput';
+import {isJetBrains} from "@/config/environment.ts";
 
 
 interface SessionContextValue {
@@ -38,13 +39,12 @@ interface SessionContextValue {
   resetToNewSession: () => void;
   openNewTab: () => void;
   openSettings: () => void;
-  switchSession: (sessionId: string) => Promise<void>;
+  switchSession: (sessionId: string) => void;
   deleteSession: (sessionId: string) => Promise<void>;
   renameSession: (sessionId: string, title: string) => void;
   addNewSession: (sessionId: string, firstPrompt: string) => void;
   setSessionState: (state: SessionState) => void;
   setWorkingDirectory: (dir: string | null) => void;
-  registerBeforeSwitch: (cb: () => void) => void;
   /** Returns true if the session was just created locally (not restored from URL) */
   isNewlyCreatedSession: (sessionId: string) => boolean;
 }
@@ -56,7 +56,7 @@ interface SessionProviderProps {
 }
 
 export function SessionProvider({ children }: SessionProviderProps) {
-  const { subscribe, send, isConnected } = useBridgeContext();
+  const { subscribe, isConnected } = useBridgeContext();
   const { workingDirectory, setWorkingDirectory } = useWorkingDir();
   const { settings: claudeSettings } = useClaudeSettings();
   const api = useApi();
@@ -71,15 +71,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [sessions, setSessions] = useState<SessionMetaDto[]>([]);
   const [sessionState, setSessionState] = useState<SessionState>(SessionState.Idle);
   const [isLoading, setIsLoading] = useState(false);
-  // 세션 전환 전 호출되는 콜백 (ChatStreamContext가 등록)
-  const beforeSwitchRef = useRef<(() => void) | null>(null);
   const newlyCreatedSessionIds = useRef(new Set<string>());
-  // 재연결 감지용 — 이전 연결 상태 추적 (결함 B+C 수정)
-  const prevConnectedRef = useRef(false);
-  const hasEverConnectedRef = useRef(false);
-  const registerBeforeSwitch = useCallback((cb: () => void) => {
-    beforeSwitchRef.current = cb;
-  }, []);
 
   // Input mode 상태
   const [inputMode, setInputModeState] = useState<InputMode>('ask_before_edit');
@@ -108,6 +100,12 @@ export function SessionProvider({ children }: SessionProviderProps) {
     }
   }, []);
 
+  // Reset input mode when session changes (URL-driven)
+  useEffect(() => {
+    hasUserChangedMode.current = false;
+    setModeResetTrigger(c => c + 1);
+  }, [currentSessionId]);
+
   // JetBrains에서 kotlinBridgeReady 이벤트 후 IDE adapter 재초기화
   useEffect(() => {
     const handleBridgeReady = () => {
@@ -118,50 +116,13 @@ export function SessionProvider({ children }: SessionProviderProps) {
     return () => window.removeEventListener('kotlinBridgeReady', handleBridgeReady);
   }, []);
 
-  // WebSocket 재연결 시 세션 복구 (결함 B+C + 스트리밍 복구)
-  // JCEF 탭 전환으로 연결이 끊겼다 복구되면:
-  // 1. 스트리밍/메시지 상태 초기화 (무한 "생각 중" 방지)
-  // 2. SESSION_CHANGE로 세션 재구독
-  // 3. 세션 히스토리를 JSONL에서 재로드
-  useEffect(() => {
-    const wasConnected = prevConnectedRef.current;
-    prevConnectedRef.current = isConnected;
-
-    if (!isConnected) return;
-
-    // 최초 연결은 ChatPage의 기존 로직이 처리
-    if (!hasEverConnectedRef.current) {
-      hasEverConnectedRef.current = true;
-      return;
-    }
-
-    // 재연결 (isConnected: false → true 전이, 최초 제외)
-    if (!wasConnected && currentSessionId) {
-      console.log('[SessionContext] Reconnected — recovering session:', currentSessionId);
-
-      // 1. 스트리밍/메시지 상태 초기화 (ChatStreamContext에서 등록한 콜백)
-      beforeSwitchRef.current?.();
-      setSessionState(SessionState.Idle);
-
-      // 2. 세션 재구독
-      send('SESSION_CHANGE', { sessionId: currentSessionId }).catch((error: unknown) => {
-        console.error('[SessionContext] Failed to resubscribe on reconnect:', error);
-      });
-
-      // 3. 세션 히스토리 재로드 — JSONL에서 완료된 메시지를 복원
-      api.sessions.load(currentSessionId).catch((error: unknown) => {
-        console.error('[SessionContext] Failed to reload session on reconnect:', error);
-      });
-    }
-  }, [isConnected, currentSessionId, send, api.sessions]);
-
   // Navigation helpers
   const navigateToSession = useCallback((sessionId: string) => {
-    navigate(withWorkingDir(sessionToPath(sessionId)), { replace: true });
+    navigate(withWorkingDir(sessionToPath(sessionId)), { replace: isJetBrains() });
   }, [navigate]);
 
   const navigateToNewSession = useCallback(() => {
-    navigate(withWorkingDir(routeToPath(Route.NEW_SESSION)), { replace: true });
+    navigate(withWorkingDir(routeToPath(Route.NEW_SESSION)), { replace: isJetBrains() });
   }, [navigate]);
 
   // loadSessions - using new API
@@ -197,7 +158,6 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setIsLoading(false);
     }
   }, [isConnected, api.sessions, workingDirectory]);
-
 
   // Listen for state changes from Kotlin
   useEffect(() => {
@@ -236,12 +196,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   }, [subscribe, loadSessions]);
 
   const resetToNewSession = useCallback(() => {
-    beforeSwitchRef.current?.();
-    setSessionState(SessionState.Idle);
-    hasUserChangedMode.current = false;
-    setModeResetTrigger(c => c + 1);
-
-    // URL change is the SSOT — navigating IS the session reset
+    // URL change is the SSOT — SessionLoader reacts to clear state + reset
     navigateToNewSession();
 
     api.sessions.create().catch(error => {
@@ -261,30 +216,16 @@ export function SessionProvider({ children }: SessionProviderProps) {
     });
   }, []);
 
-  const switchSession = useCallback(async (sessionId: string) => {
+  const switchSession = useCallback((sessionId: string) => {
     console.log('[SessionContext] switchSession called with:', sessionId);
 
     if (sessions.some(s => s.id === sessionId)) {
-      // 동기적으로 이전 세션 상태를 먼저 리셋 (레이스 컨디션 방지)
-      beforeSwitchRef.current?.();
-
-      setSessionState(SessionState.Idle);
-      hasUserChangedMode.current = false;
-      setModeResetTrigger(c => c + 1);
-
-      // URL change is the SSOT — navigating IS the session switch
+      // URL change is the SSOT — SessionLoader reacts to clear state + load messages
       navigateToSession(sessionId);
-
-      try {
-        await api.sessions.load(sessionId);
-        console.log('[SessionContext] Session load requested:', sessionId);
-      } catch (error) {
-        console.error('[SessionContext] Failed to load session:', error);
-      }
     } else {
       console.warn('[SessionContext] Session not found in list:', sessionId);
     }
-  }, [sessions, api.sessions, navigateToSession]);
+  }, [sessions, navigateToSession]);
 
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
@@ -361,7 +302,6 @@ export function SessionProvider({ children }: SessionProviderProps) {
     addNewSession,
     setSessionState,
     setWorkingDirectory,
-    registerBeforeSwitch,
     isNewlyCreatedSession,
   };
 

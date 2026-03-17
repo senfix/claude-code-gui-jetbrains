@@ -52,7 +52,7 @@ const mockSession = {
   setInputMode: vi.fn(),
   cycleInputMode: vi.fn(),
   syncInitialInputMode: vi.fn(),
-  registerBeforeSwitch: vi.fn(),
+  isNewlyCreatedSession: vi.fn().mockReturnValue(false),
 };
 
 vi.mock('../contexts/SessionContext', () => ({

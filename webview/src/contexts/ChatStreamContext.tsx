@@ -151,11 +151,8 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
     prePlanModeRef.current = null;
   }, [chatStream.clearMessages, chatStream.resetStreamState, tools.clearToolUses, diffs.clearDiffs]);
 
-  // SessionContext.switchSession()이 호출될 때 동기적으로 리셋되도록 콜백 등록
-  // (useEffect 자동 감지 방식은 SESSION_LOADED와의 레이스 컨디션 유발)
-  useEffect(() => {
-    session.registerBeforeSwitch(resetForSessionSwitch);
-  }, [session.registerBeforeSwitch, resetForSessionSwitch]);
+  // resetForSessionSwitch is called directly by SessionLoader
+  // when currentSessionId changes (URL-driven reactive pattern)
 
   // ref로 안정화 (useEffect 의존성 churn 방지)
   const toolsRef = useRef(tools);

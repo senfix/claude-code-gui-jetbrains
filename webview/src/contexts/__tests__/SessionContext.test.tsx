@@ -174,9 +174,8 @@ describe('SessionContext', () => {
     expect(capturedCtx!.sessions).toHaveLength(0);
   });
 
-  it('switchSession - 성공 시 currentSessionId 업데이트 및 load 호출', async () => {
+  it('switchSession - 성공 시 navigate 호출', async () => {
     mockSessionsIndex.mockResolvedValue(mockSessionDtos);
-    mockSessionsLoad.mockResolvedValue(undefined);
 
     let capturedCtx: ReturnType<typeof useSessionContext> | null = null;
 
@@ -190,11 +189,10 @@ describe('SessionContext', () => {
       await capturedCtx?.loadSessions();
     });
 
-    await act(async () => {
-      await capturedCtx?.switchSession('session-1');
+    act(() => {
+      capturedCtx?.switchSession('session-1');
     });
 
-    expect(mockSessionsLoad).toHaveBeenCalledWith('session-1');
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.stringContaining('/sessions/session-1'),
       expect.objectContaining({ replace: true })
@@ -219,11 +217,10 @@ describe('SessionContext', () => {
       await capturedCtx?.loadSessions();
     });
 
-    await act(async () => {
-      await capturedCtx?.switchSession('non-existent-id');
+    act(() => {
+      capturedCtx?.switchSession('non-existent-id');
     });
 
-    expect(mockSessionsLoad).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(capturedCtx!.currentSessionId).toBeNull();
   });
@@ -255,8 +252,9 @@ describe('SessionContext', () => {
   });
 
   it('deleteSession - 현재 세션 삭제 시 currentSessionId null로 초기화', async () => {
+    // Start with current session already set via URL (SSOT)
+    mockPathname = '/sessions/session-1';
     mockSessionsIndex.mockResolvedValue(mockSessionDtos);
-    mockSessionsLoad.mockResolvedValue(undefined);
 
     let capturedCtx: ReturnType<typeof useSessionContext> | null = null;
 
@@ -268,10 +266,6 @@ describe('SessionContext', () => {
 
     await act(async () => {
       await capturedCtx?.loadSessions();
-    });
-
-    await act(async () => {
-      await capturedCtx?.switchSession('session-1');
     });
 
     await act(async () => {

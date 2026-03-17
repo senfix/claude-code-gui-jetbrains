@@ -10,6 +10,8 @@ import { ClaudeSettingsProvider } from './ClaudeSettingsContext';
 import { ChatInputFocusProvider } from './ChatInputFocusContext';
 import { WorkingDirProvider } from './WorkingDirContext';
 import { CommandPaletteProvider } from '../commandPalette/CommandPaletteProvider';
+import { useApi } from './ApiContext';
+import { SessionState } from '../types';
 import type { LoadedMessageDto } from '../types';
 
 interface AppProvidersProps {
@@ -17,71 +19,114 @@ interface AppProvidersProps {
 }
 
 /**
- * SessionLoader - loadSessions를 bridge 연결 시점에 호출
+ * SessionLoader - Reactive session management driven by URL (SSOT)
  *
- * currentSessionId is derived from URL (SSOT) in SessionContext.
- * This component only handles:
- * 1. Loading sessions on connect
- * 2. Restoring session from URL on initial load
- * 3. Subscribing to SESSION_LOADED events
+ * currentSessionId is derived from URL pathname in SessionContext.
+ * This component reacts to currentSessionId changes and automatically:
+ * 1. Clears previous session state (messages, tools, diffs)
+ * 2. Loads new session messages from backend
+ * 3. Guards against stale SESSION_LOADED responses
+ *
+ * Also handles:
+ * - Loading session list on connect
+ * - Reconnection recovery (isConnected false→true)
+ * - Redirecting invalid session URLs
  */
 function SessionLoader({ children }: { children: ReactNode }) {
   const { isConnected } = useApiContext();
   const { subscribe } = useBridgeContext();
-  const { loadSessions, switchSession, sessions, currentSessionId, navigateToNewSession, isNewlyCreatedSession } = useSessionContext();
-  const { loadMessages } = useChatStreamContext();
-  const sessionRestored = useRef(false);
+  const api = useApi();
+  const {
+    loadSessions, sessions, currentSessionId, navigateToNewSession,
+    isNewlyCreatedSession, setSessionState,
+  } = useSessionContext();
+  const { loadMessages, resetForSessionSwitch } = useChatStreamContext();
 
+  // Ref to track currentSessionId for SESSION_LOADED validation (avoids stale closure)
+  const currentSessionIdRef = useRef<string | null>(currentSessionId);
+  currentSessionIdRef.current = currentSessionId;
+
+  // Track previous values for change detection
+  const prevSessionIdRef = useRef<string | null | undefined>(undefined); // undefined = not yet initialized
+  const prevConnectedRef = useRef(false);
+
+  // 1. Load session list on connect
   useEffect(() => {
     if (isConnected) {
-      console.log('[AppProviders] Bridge connected, loading sessions...');
+      console.log('[SessionLoader] Bridge connected, loading sessions...');
       loadSessions();
     }
   }, [isConnected, loadSessions]);
 
-  // URL에 sessionId가 있으면 세션 목록 로드 후 해당 세션의 메시지를 로드
-  // currentSessionId is already derived from URL — just need to load messages
+  // 2. React to currentSessionId changes OR reconnection
+  //    This is the CORE reactive effect — replaces manual orchestration in switchSession/resetToNewSession
   useEffect(() => {
-    if (sessionRestored.current || !currentSessionId || sessions.length === 0) return;
-
-    // Skip restoration for sessions just created locally via addNewSession —
-    // their messages are already in local state and JSONL doesn't exist yet.
-    if (isNewlyCreatedSession(currentSessionId)) {
-      sessionRestored.current = true;
+    if (!isConnected) {
+      prevConnectedRef.current = false;
       return;
     }
 
-    sessionRestored.current = true;
-    const sessionExists = sessions.some(s => s.id === currentSessionId);
-    if (sessionExists) {
-      console.log('[AppProviders] Restoring session from URL:', currentSessionId);
-      switchSession(currentSessionId);
-    } else {
-      console.warn('[AppProviders] Session from URL not found, falling back to new session:', currentSessionId);
-      navigateToNewSession();
-    }
-  }, [currentSessionId, sessions, switchSession, navigateToNewSession, isNewlyCreatedSession]);
+    const sessionChanged = prevSessionIdRef.current !== currentSessionId;
+    const reconnected = !prevConnectedRef.current && prevSessionIdRef.current !== undefined;
 
-  // Subscribe to SESSION_LOADED to load messages into chat
-  // Raw JSONL entries are passed through - transformation is handled by useChatStream.loadMessages()
+    prevSessionIdRef.current = currentSessionId;
+    prevConnectedRef.current = true;
+
+    // Nothing to do if session didn't change and not reconnecting
+    if (!sessionChanged && !reconnected) return;
+
+    console.log('[SessionLoader] Session reaction:', {
+      currentSessionId,
+      sessionChanged,
+      reconnected,
+    });
+
+    // Clear previous session state (messages, streaming, tools, diffs)
+    resetForSessionSwitch();
+    setSessionState(SessionState.Idle);
+
+    // Load session messages (skip for new/empty sessions and newly created sessions)
+    if (currentSessionId && !isNewlyCreatedSession(currentSessionId)) {
+      api.sessions.load(currentSessionId);
+    }
+  }, [currentSessionId, isConnected, resetForSessionSwitch, setSessionState, api.sessions, isNewlyCreatedSession]);
+
+  // 3. Subscribe to SESSION_LOADED — with sessionId guard against stale responses
   useEffect(() => {
     return subscribe('SESSION_LOADED', (message) => {
       if (message.payload?.messages) {
         const rawMessages = message.payload.messages as LoadedMessageDto[];
         const sid = message.payload?.sessionId as string | undefined;
 
-        // Skip empty loads for newly created sessions — their first user message
-        // hasn't been written to JSONL yet, so loading would wipe local state.
-        if (sid && isNewlyCreatedSession(sid) && rawMessages.length === 0) {
-          console.log('[AppProviders] Skipping empty SESSION_LOADED for newly created session:', sid);
+        // Guard: ignore stale responses from previously requested sessions
+        if (sid && sid !== currentSessionIdRef.current) {
+          console.log('[SessionLoader] Ignoring stale SESSION_LOADED for:', sid, '(current:', currentSessionIdRef.current, ')');
           return;
         }
 
-        console.log('[AppProviders] Session loaded, injecting raw messages:', rawMessages.length, rawMessages);
+        // Skip empty loads for newly created sessions — their first user message
+        // hasn't been written to JSONL yet, so loading would wipe local state.
+        if (sid && isNewlyCreatedSession(sid) && rawMessages.length === 0) {
+          console.log('[SessionLoader] Skipping empty SESSION_LOADED for newly created session:', sid);
+          return;
+        }
+
+        console.log('[SessionLoader] Session loaded, injecting raw messages:', rawMessages.length);
         loadMessages(rawMessages);
       }
     });
   }, [subscribe, loadMessages, isNewlyCreatedSession]);
+
+  // 4. Validate session exists in list — redirect bad URLs
+  useEffect(() => {
+    if (!currentSessionId || sessions.length === 0) return;
+    if (isNewlyCreatedSession(currentSessionId)) return;
+
+    if (!sessions.some(s => s.id === currentSessionId)) {
+      console.warn('[SessionLoader] Session from URL not found, redirecting:', currentSessionId);
+      navigateToNewSession();
+    }
+  }, [currentSessionId, sessions, isNewlyCreatedSession, navigateToNewSession]);
 
   return <>{children}</>;
 }
@@ -100,7 +145,7 @@ function SessionLoader({ children }: { children: ReactNode }) {
  * 8. ChatStreamProvider - Chat state + Streaming + Diffs + Tools (depends on Bridge + Session)
  * 9. CommandPaletteProvider - Slash command manager (depends on ChatStream + Session)
  * 10. ThemeProvider - Theme management (depends on Settings)
- * 11. SessionLoader - Auto-load sessions when bridge connects
+ * 11. SessionLoader - Reactive session management (depends on Session + ChatStream + Api)
  */
 export function AppProviders({ children }: AppProvidersProps) {
   return (
