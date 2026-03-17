@@ -30,3 +30,8 @@ export const isBrowser = () => detectRuntime() === IdeAdapterType.BROWSER;
 export function _resetRuntimeCache() {
   _cachedRuntime = null;
 }
+
+export function isMobile(): boolean {
+  const userAgent = navigator.userAgent.toLowerCase();
+  return /android|iphone|ipad|ipod/.test(userAgent);
+}

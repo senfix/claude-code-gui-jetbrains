@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { ChatInput } from './ChatInput';
 import { SessionHeader } from './SessionHeader';
 import { ChatMessageArea } from './ChatMessageArea';
@@ -13,6 +13,7 @@ import { useChatStreamContext } from '../../contexts/ChatStreamContext';
 import { usePendingAskUserQuestion } from '../../hooks/usePendingAskUserQuestion';
 import { usePendingPermissions } from '../../hooks/usePendingPermissions';
 import { usePendingPlanApproval } from '../../hooks/usePendingPlanApproval';
+import {isMobile} from "@/config/environment.ts";
 
 export function ChatPage() {
   const { textareaRef, focus: focusInput } = useChatInputFocus();
@@ -22,17 +23,6 @@ export function ChatPage() {
   const { pending: pendingPlan } = usePendingPlanApproval();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
-  const [bottomPadding, setBottomPadding] = useState(144); // pb-36 = 144px
-
-  useEffect(() => {
-    const el = bottomPanelRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      setBottomPadding(entry.contentRect.height);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   // 빈 영역 클릭 시 textarea로 포커스 이동
   // mousedown 시점에 확인해야 포커스 이동 전 activeElement를 비교할 수 있음
@@ -51,7 +41,7 @@ export function ChatPage() {
   }, [textareaRef, focusInput]);
 
   return (
-    <div className="w-full h-screen bg-neutral-900 text-zinc-100" onMouseDown={handleContainerMouseDown}>
+    <div className="w-full h-screen bg-neutral-900 text-zinc-100 fixed left-0 top-0" onMouseDown={handleContainerMouseDown}>
       {/* Header - Minimal */}
       <div className="fixed w-full top-0 bg-blend-darken bg-neutral-900 z-10">
         <SessionHeader />
@@ -63,12 +53,12 @@ export function ChatPage() {
       </BannerArea>
 
       {/* Messages Area */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto w-full h-screen pt-10 bg-neutral-900 z-0" style={{ paddingBottom: bottomPadding }}>
+      <div ref={scrollContainerRef} className={`flex-1 overflow-y-auto w-full h-screen pt-10 ${isMobile() ? 'pb-80' : 'pb-32'} bg-neutral-900 z-0`}>
         <ChatMessageArea isStreaming={isStreaming && !pendingUserAnswer && !pendingPlan && !pendingPermission} scrollContainerRef={scrollContainerRef} />
       </div>
 
       {/* Input Area */}
-      <div ref={bottomPanelRef} className="fixed w-full bottom-0 z-10">
+      <div ref={bottomPanelRef} className="fixed w-full left-0 bottom-0 z-10">
         {pendingUserAnswer ? (
           <AskUserQuestionInputPanel
             toolUse={pendingUserAnswer.toolUse}
