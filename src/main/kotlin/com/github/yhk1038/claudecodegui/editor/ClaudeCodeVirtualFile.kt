@@ -17,6 +17,7 @@ class ClaudeCodeVirtualFile(
     private var displayName: String = "Claude: ${sessionId.take(8)}"
 
     companion object {
+        private const val MAX_DISPLAY_NAME_LENGTH = 20
         private val openSessions = Collections.synchronizedMap(
             WeakHashMap<Project, MutableMap<String, ClaudeCodeVirtualFile>>()
         )
@@ -42,11 +43,16 @@ class ClaudeCodeVirtualFile(
     }
 
     fun setDisplayName(name: String) {
-        if (displayName == name) return  // 같은 값이면 무시
+        val truncated = if (name.length > MAX_DISPLAY_NAME_LENGTH) {
+            name.take(MAX_DISPLAY_NAME_LENGTH) + "…"
+        } else {
+            name
+        }
+        if (displayName == truncated) return
         val oldName = displayName
-        displayName = name
+        displayName = truncated
         // VirtualFile 변경 알림
-        VirtualFileManager.getInstance().notifyPropertyChanged(this, PROP_NAME, oldName, name)
+        VirtualFileManager.getInstance().notifyPropertyChanged(this, PROP_NAME, oldName, truncated)
     }
 
     override fun getName(): String = displayName
