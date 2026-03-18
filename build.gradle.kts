@@ -106,6 +106,11 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
+            <h3>0.11.6 - Stale Backend Auto-Replace</h3>
+            <ul>
+                <li>Fixed stale backend process not being replaced with the new version on plugin upgrade</li>
+                <li>Fixed IDE error when opening a new tab in JCEF WebView</li>
+            </ul>
             <h3>0.11.5 - Mobile Layout & Session Improvements</h3>
             <ul>
                 <li>Stabilized mobile layout when virtual keyboard opens with CSS zoom</li>
