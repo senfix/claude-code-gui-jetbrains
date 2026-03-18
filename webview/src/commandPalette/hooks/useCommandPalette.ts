@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, KeyboardEvent, RefObject } from 'react';
-import { PanelSectionId, PanelItemType, ActionItem, CommandItem, PanelItem } from '@/types/commandPalette';
+import { PanelSection, PanelItemType, ActionItem, CommandItem, PanelItem } from '@/types/commandPalette';
 import { useCommandPaletteRegistry } from '../CommandPaletteProvider';
 
 interface UseCommandPaletteOptions {
@@ -19,20 +19,20 @@ export function useCommandPalette({ onChange, textareaRef }: UseCommandPaletteOp
   const filteredSections = useMemo(() => {
     if (!filterQuery) return sections;
 
-    const slashCommandsSection = sections.find(s => s.id === PanelSectionId.SlashCommands);
-    if (!slashCommandsSection) return [];
-
-    const filteredItems = slashCommandsSection.items.filter(item =>
-      item.label.toLowerCase().includes(filterQuery.toLowerCase())
-    );
-
-    if (filteredItems.length === 0) return [];
-
-    return [{
-      ...slashCommandsSection,
-      showDividerAbove: false,
-      items: filteredItems,
-    }];
+    const query = filterQuery.toLowerCase();
+    return sections
+      .map((section, index) => {
+        const filteredItems = section.items.filter(item =>
+          item.label.toLowerCase().includes(query)
+        );
+        if (filteredItems.length === 0) return null;
+        return {
+          ...section,
+          showDividerAbove: index > 0,
+          items: filteredItems,
+        };
+      })
+      .filter((section): section is PanelSection => section !== null);
   }, [sections, filterQuery]);
 
   const selectItem = useCallback((sectionIndex: number, itemIndex: number) => {
