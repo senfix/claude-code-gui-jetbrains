@@ -83,7 +83,16 @@ class LogForwarder {
       console[method] = (...args: unknown[]) => {
         original(...args);
 
-        const message = args.map((a) => (typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+        const message = args
+          .map((a) => {
+            if (typeof a === 'string') return a;
+            try {
+              return JSON.stringify(a);
+            } catch {
+              return String(a);
+            }
+          })
+          .join(' ');
         this.buffer.push({
           level: method as unknown as LogLevel,
           source: 'webview',
