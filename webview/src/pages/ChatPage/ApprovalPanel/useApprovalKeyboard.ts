@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { isMobile } from '@/config/environment';
 
 interface UseApprovalKeyboardParams {
   optionCount: number;
@@ -13,7 +14,7 @@ export function useApprovalKeyboard(params: UseApprovalKeyboardParams) {
   const { optionCount, focusedIndex, setFocusedIndex, handleOptionClick, handleTextSubmit, onCancel } = params;
 
   const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile()) {
       e.preventDefault();
       handleTextSubmit();
     } else if (e.key === 'Escape') {

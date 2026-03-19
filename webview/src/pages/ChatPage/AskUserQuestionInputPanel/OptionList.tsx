@@ -1,5 +1,6 @@
 import { useRef, useEffect, KeyboardEvent } from 'react';
 import { OptionItem } from '@/pages/ChatPage/message-renderers/ToolRenderers/AskUserQuestion/OptionItem';
+import { useTextareaAutoResize } from '@/pages/ChatPage/ChatInput/hooks/useTextareaAutoResize';
 import { QuestionOption } from './useFormState';
 
 interface Props {
@@ -10,7 +11,7 @@ interface Props {
   otherText: string;
   onSelect: (label: string) => void;
   onOtherTextChange: (text: string) => void;
-  onOtherKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
+  onOtherKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
 }
 
 export const OptionList = (props: Props) => {
@@ -25,7 +26,9 @@ export const OptionList = (props: Props) => {
     onOtherKeyDown,
   } = props;
 
-  const otherInputRef = useRef<HTMLInputElement>(null);
+  const otherInputRef = useRef<HTMLTextAreaElement>(null);
+
+  useTextareaAutoResize({ textareaRef: otherInputRef, value: otherText, maxHeight: 120 });
 
   useEffect(() => {
     if (isOtherSelected) {
@@ -49,14 +52,14 @@ export const OptionList = (props: Props) => {
 
       {isOtherSelected && (
         <div className="mt-1">
-          <input
+          <textarea
             ref={otherInputRef}
-            type="text"
             value={otherText}
             onChange={e => onOtherTextChange(e.target.value)}
             onKeyDown={onOtherKeyDown}
             placeholder="Type your answer..."
-            className="w-full px-3 py-1.5 rounded bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500/50"
+            rows={1}
+            className="w-full px-3 py-1.5 rounded bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 resize-none"
           />
         </div>
       )}

@@ -24,6 +24,7 @@ import { useClaudeSettings } from '@/contexts/ClaudeSettingsContext';
 import { EffortLevel, nextEffortLevel, parseEffortLevel } from '@/types/effort';
 import { useMention } from './hooks/useMention';
 import { MentionDropdown } from './MentionDropdown';
+import { isMobile } from '@/config/environment';
 
 export function ChatInput() {
   const { textareaRef } = useChatInputFocus();
@@ -294,7 +295,7 @@ export function ChatInput() {
     if (palette.handleSlashKeyDown(e, value)) return;
 
     // Enter: submit (IME 조합 중에는 무시)
-    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing && !isMobile()) {
       e.preventDefault();
       if (!disabled && (value.trim() || attachments.length > 0)) {
         inputHistory.pushToHistory(value);

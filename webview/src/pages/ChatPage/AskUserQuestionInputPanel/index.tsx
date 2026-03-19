@@ -2,6 +2,7 @@ import { useEffect, useRef, KeyboardEvent } from 'react';
 import { PendingAskUserQuestion } from '@/hooks/usePendingAskUserQuestion';
 import { useApi } from '@/contexts/ApiContext';
 import { useChatStreamContext } from '@/contexts/ChatStreamContext';
+import { isMobile } from '@/config/environment';
 import { useFormState } from './useFormState';
 import { TabBar } from './TabBar';
 import { OptionList } from './OptionList';
@@ -69,8 +70,8 @@ export const AskUserQuestionInputPanel = (props: Props) => {
     }
   };
 
-  const handleOtherKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+  const handleOtherKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile()) {
       e.preventDefault();
       handleSubmit();
     }
