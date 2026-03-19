@@ -106,6 +106,12 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
+            <h3>0.12.1 - Fix session reset when splitting or moving editor tabs to another tab group</h3>
+            <ul>
+                <li>Fixed WebView state loss when moving or splitting editor tabs</li>
+                <li>Added open current URL in external browser via Cmd+click (macOS) / Ctrl+click (Windows/Linux) on tunnel button</li>
+                <li>Fixed circular reference handling in LogForwarder console serialization</li>
+            </ul>
             <h3>0.12.0 - @Mention File & Folder Autocomplete</h3>
             <ul>
                 <li>Added @mention autocomplete in chat input for files and folders with fuzzy search</li>
