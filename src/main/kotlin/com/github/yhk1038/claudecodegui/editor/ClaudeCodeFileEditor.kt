@@ -1,6 +1,5 @@
 package com.github.yhk1038.claudecodegui.editor
 
-import com.github.yhk1038.claudecodegui.services.EditorTabStateService
 import com.github.yhk1038.claudecodegui.toolwindow.ClaudeCodePanel
 import com.intellij.openapi.fileEditor.FileEditor
 import com.intellij.openapi.fileEditor.FileEditorLocation
@@ -17,7 +16,11 @@ class ClaudeCodeFileEditor(
     private val virtualFile: ClaudeCodeVirtualFile
 ) : UserDataHolderBase(), FileEditor {
 
-    private val panel: ClaudeCodePanel = ClaudeCodePanel(project, virtualFile.sessionId, virtualFile.initialPath)
+    private val panel: ClaudeCodePanel = ClaudeCodePanel(
+        project,
+        virtualFile.sessionId,
+        virtualFile.currentPath ?: virtualFile.initialPath
+    )
 
     init {
         Disposer.register(this, panel)
@@ -27,6 +30,10 @@ class ClaudeCodeFileEditor(
             virtualFile.setDisplayName(title)
         }
 
+        // WebView의 URL 변경을 VirtualFile에 전달 (탭 이동/분할 시 복원용)
+        panel.onPathChanged = { path ->
+            virtualFile.currentPath = path
+        }
     }
 
     override fun getComponent(): JComponent = panel
@@ -50,8 +57,9 @@ class ClaudeCodeFileEditor(
     override fun getCurrentLocation(): FileEditorLocation? = null
 
     override fun dispose() {
-        ClaudeCodeVirtualFile.removeSession(project, virtualFile.sessionId)
-        EditorTabStateService.getInstance(project).removeTab(virtualFile.sessionId)
-        // panel은 Disposer에 의해 자동으로 dispose됨
+        // NOTE: removeSession/removeTab은 여기서 호출하지 않음.
+        // 탭 이동/분할 시에도 dispose()가 호출되기 때문에,
+        // 실제 탭 닫기는 ClaudeCodeEditorManagerListener.fileClosed()에서 처리.
+        // panel은 Disposer에 의해 자동으로 dispose됨.
     }
 }

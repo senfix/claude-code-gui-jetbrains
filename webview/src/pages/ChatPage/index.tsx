@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { ChatInput } from './ChatInput';
 import { SessionHeader } from './SessionHeader';
 import { ChatMessageArea } from './ChatMessageArea';
@@ -10,6 +10,7 @@ import { UpdateBanner } from './UpdateBanner';
 import { ConnectionLostBanner } from './ConnectionLostBanner';
 import { useChatInputFocus } from '../../contexts/ChatInputFocusContext';
 import { useChatStreamContext } from '../../contexts/ChatStreamContext';
+import { useSessionContext } from '../../contexts/SessionContext';
 import { usePendingAskUserQuestion } from '../../hooks/usePendingAskUserQuestion';
 import { usePendingPermissions } from '../../hooks/usePendingPermissions';
 import { usePendingPlanApproval } from '../../hooks/usePendingPlanApproval';
@@ -17,12 +18,49 @@ import {isMobile} from "@/config/environment.ts";
 
 export function ChatPage() {
   const { textareaRef, focus: focusInput } = useChatInputFocus();
+  const { currentSessionId } = useSessionContext();
   const { messages, isStreaming } = useChatStreamContext();
   const { pending: pendingUserAnswer, dismiss } = usePendingAskUserQuestion(messages, isStreaming);
   const { pending: pendingPermission, approve: approvePermission, approveForSession, deny: denyPermission } = usePendingPermissions();
   const { pending: pendingPlan } = usePendingPlanApproval();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomPanelRef = useRef<HTMLDivElement>(null);
+
+  // Save scroll position to localStorage (debounced via scroll event)
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || !currentSessionId) return;
+
+    let saveTimer: ReturnType<typeof setTimeout>;
+    const handleScroll = () => {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        localStorage.setItem(`claude-gui:scroll:${currentSessionId}`, String(el.scrollTop));
+      }, 300);
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      clearTimeout(saveTimer);
+      el.removeEventListener('scroll', handleScroll);
+    };
+  }, [currentSessionId]);
+
+  // Restore scroll position after messages load
+  useEffect(() => {
+    if (!currentSessionId || messages.length === 0) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const key = `claude-gui:scroll:${currentSessionId}`;
+    const cached = localStorage.getItem(key);
+    if (cached) {
+      requestAnimationFrame(() => {
+        el.scrollTop = Number(cached);
+      });
+      localStorage.removeItem(key);
+    }
+  }, [currentSessionId, messages.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 빈 영역 클릭 시 textarea로 포커스 이동
   // mousedown 시점에 확인해야 포커스 이동 전 activeElement를 비교할 수 있음

@@ -88,6 +88,24 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
   const toggleThinkingExpanded = useCallback(() => setIsThinkingExpanded(prev => !prev), []);
   const [sessionModel, setSessionModel] = useState<ClaudeModel | null>(null);
 
+  // Save input draft to localStorage for tab move/split restoration.
+  // Skip the first mount to prevent the initial empty input from clearing
+  // a saved draft (JCEF may reload the page on browser component reattach).
+  const draftInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!session.currentSessionId) return;
+    if (!draftInitializedRef.current) {
+      draftInitializedRef.current = true;
+      return;
+    }
+    const key = `claude-gui:draft:${session.currentSessionId}`;
+    if (input) {
+      localStorage.setItem(key, input);
+    } else {
+      localStorage.removeItem(key);
+    }
+  }, [input, session.currentSessionId]);
+
   // EnterPlanMode 진입 전의 모드를 저장 (ExitPlanMode 시 복원용)
   const prePlanModeRef = useRef<InputMode | null>(null);
 
@@ -142,14 +160,18 @@ export function ChatStreamProvider({ children }: ChatStreamProviderProps) {
   const resetForSessionSwitch = useCallback(() => {
     chatStream.clearMessages();
     chatStream.resetStreamState();
-    setInput('');
+    // Restore draft input from cache (tab move/split restoration)
+    const draft = session.currentSessionId
+      ? localStorage.getItem(`claude-gui:draft:${session.currentSessionId}`)
+      : null;
+    setInput(draft || '');
     setIsThinkingExpanded(false);
     setSessionModel(null);
     tools.clearToolUses();
     diffs.clearDiffs();
     queuedMessageRef.current = null;
     prePlanModeRef.current = null;
-  }, [chatStream.clearMessages, chatStream.resetStreamState, tools.clearToolUses, diffs.clearDiffs]);
+  }, [chatStream.clearMessages, chatStream.resetStreamState, tools.clearToolUses, diffs.clearDiffs, session.currentSessionId]);
 
   // resetForSessionSwitch is called directly by SessionLoader
   // when currentSessionId changes (URL-driven reactive pattern)

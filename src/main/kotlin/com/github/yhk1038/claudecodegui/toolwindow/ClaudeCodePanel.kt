@@ -2,6 +2,7 @@ package com.github.yhk1038.claudecodegui.toolwindow
 
 import com.github.yhk1038.claudecodegui.actions.OpenClaudeCodeAction
 import com.github.yhk1038.claudecodegui.bridge.NodeProcessManager
+import com.github.yhk1038.claudecodegui.services.ClaudeCodeBrowserService
 import com.github.yhk1038.claudecodegui.services.DiffService
 import com.github.yhk1038.claudecodegui.services.NodeBackendService
 import com.intellij.ide.BrowserUtil
@@ -12,10 +13,8 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
-import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.jcef.JBCefBrowser
-import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -35,13 +34,16 @@ import javax.swing.JPanel
  *
  * In the v4 single-backend architecture, all business logic (Claude CLI, sessions,
  * settings, file I/O) lives in the Node.js backend. This panel only:
- * - Manages the JCEF browser component
+ * - Manages the JCEF browser component (via [ClaudeCodeBrowserService] pooling)
  * - Starts [NodeProcessManager] to spawn the Node.js backend
  * - Loads `http://localhost:{port}` once the backend is ready
  * - Implements [NodeProcessManager.RpcHandler] for IDE-native operations
  *   (open file, diff viewer, new tab, settings) requested by the Node.js backend
  * - Handles cursor CSS -> Java cursor mapping
  * - Handles title changes, console logging, keyboard shortcuts, DevTools
+ *
+ * Browser instances are pooled by [ClaudeCodeBrowserService] so that tab
+ * move/split operations preserve all WebView state (input, scroll, dialogs).
  */
 class ClaudeCodePanel(
     private val project: Project,
@@ -51,17 +53,25 @@ class ClaudeCodePanel(
 
     private val logger = Logger.getInstance(ClaudeCodePanel::class.java)
 
-    private val browser: JBCefBrowser = JBCefBrowser()
-    private val cursorQuery: JBCefJSQuery = JBCefJSQuery.create(browser as JBCefBrowserBase)
+    // Browser is owned by ClaudeCodeBrowserService, NOT by this panel.
+    // This allows the browser to survive dispose-recreate cycles during tab move/split.
+    private val browserService = ClaudeCodeBrowserService.getInstance(project)
+    private val holder = browserService.getOrCreate(sessionId)
+    private val browser: JBCefBrowser = holder.browser
+    private val cursorQuery: JBCefJSQuery = holder.cursorQuery
 
-    // Title change callback (set by FileEditor)
-    var onTitleChanged: ((String) -> Unit)? = null
+    // Title/path change callbacks delegated to BrowserHolder
+    // so handlers installed on first panel creation can reach the latest panel's callbacks.
+    var onTitleChanged: ((String) -> Unit)?
+        get() = holder.onTitleChanged
+        set(value) { holder.onTitleChanged = value }
+
+    var onPathChanged: ((String) -> Unit)?
+        get() = holder.onPathChanged
+        set(value) { holder.onPathChanged = value }
 
     private val panelId = UUID.randomUUID().toString()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-
-    // IME workaround: flag to prevent double-wrapping on subsequent page loads
-    private var imeWorkaroundInstalled = false
 
     private val backendService = NodeBackendService.getInstance()
     private val diffService: DiffService = DiffService.getInstance(project)
@@ -76,22 +86,39 @@ class ClaudeCodePanel(
     private var errorPanel: JPanel? = null
 
     init {
-        // Phase 1: Show loading screen
-        add(loadingLabel, BorderLayout.CENTER)
+        if (holder.isLoaded) {
+            // Browser already loaded — reattach component (tab move/split restoration)
+            val parent = browser.component.parent
+            if (parent != null && parent !== this) {
+                parent.remove(browser.component)
+            }
+            add(browser.component, BorderLayout.CENTER)
+            logger.info("Reattached existing JCEF browser for session: $sessionId")
+        } else {
+            // First load — show loading screen
+            add(loadingLabel, BorderLayout.CENTER)
+        }
 
-        // Phase 2: Set up JCEF handlers (cursor, title, console, keyboard)
-        setupBrowserHandlers()
+        // Install JCEF handlers only once per browser instance
+        if (!holder.handlersInstalled) {
+            setupBrowserHandlers()
+            holder.handlersInstalled = true
+        }
 
-        // Phase 3: Start Node.js backend and load URL once ready
+        // Register RPC handler for this panel
         backendService.ensureStarted(project.basePath ?: "", panelId, createRpcHandler())
-        scope.launch {
-            try {
-                val port = backendService.awaitPort()
-                loadWebView(port)
-            } catch (e: Exception) {
-                logger.error("Failed to start Node.js backend", e)
-                javax.swing.SwingUtilities.invokeLater {
-                    showBackendError(e.message ?: "Unknown error")
+
+        // Load URL only if not already loaded
+        if (!holder.isLoaded) {
+            scope.launch {
+                try {
+                    val port = backendService.awaitPort()
+                    loadWebView(port)
+                } catch (e: Exception) {
+                    logger.error("Failed to start Node.js backend", e)
+                    javax.swing.SwingUtilities.invokeLater {
+                        showBackendError(e.message ?: "Unknown error")
+                    }
                 }
             }
         }
@@ -128,8 +155,6 @@ class ClaudeCodePanel(
                 if (frame.isMain) {
                     // Mark JCEF environment so detectRuntime() in environment.ts can detect
                     // the JetBrains environment and select JetBrainsAdapter over BrowserAdapter.
-                    // Even though this runs after page JS, getAdapter() in adapters/index.ts
-                    // re-checks on every call and auto-switches from BrowserAdapter to JetBrainsAdapter.
                     frame.executeJavaScript("window.__JCEF__ = true;", frame.url, 0)
                     injectCursorTracking(frame)
                     installImeWorkaround()
@@ -141,11 +166,20 @@ class ClaudeCodePanel(
             }
         }, browser.cefBrowser)
 
-        // Title change detection and console log capture
+        // Title change detection, address change tracking, and console log capture
         browser.jbCefClient.addDisplayHandler(object : CefDisplayHandlerAdapter() {
+            override fun onAddressChange(browser: CefBrowser?, frame: CefFrame?, url: String?) {
+                if (url != null && frame?.isMain == true) {
+                    try {
+                        val uri = java.net.URI(url)
+                        holder.onPathChanged?.invoke(uri.path)
+                    } catch (_: Exception) { /* ignore malformed URLs */ }
+                }
+            }
+
             override fun onTitleChange(browser: CefBrowser?, title: String?) {
                 if (title != null && title.isNotBlank()) {
-                    onTitleChanged?.invoke(title)
+                    holder.onTitleChanged?.invoke(title)
                 }
             }
 
@@ -224,7 +258,6 @@ class ClaudeCodePanel(
 
     /**
      * Inject cursor CSS tracking script into the loaded page.
-     * This replaces the old cursorQuery injection that was part of injectBridge().
      */
     private fun injectCursorTracking(frame: CefFrame) {
         val js = """
@@ -243,16 +276,12 @@ class ClaudeCodePanel(
     }
 
     /**
-     * JCEF IME NPE 워크어라운드.
-     * JBCefInputMethodAdapter.inputMethodTextChanged()에서 replacementRange가 null일 때
-     * NPE가 발생하는 JetBrains 플랫폼 버그(macOS + JCEF + CJK IME)를 우회합니다.
-     *
-     * 브라우저 컴포넌트 트리에 등록된 InputMethodListener를 찾아
-     * try-catch(NullPointerException)로 감싼 래퍼로 교체합니다.
-     * imeWorkaroundInstalled 플래그로 중복 래핑을 방지합니다.
+     * JCEF IME NPE workaround.
+     * Wraps InputMethodListeners with try-catch to suppress NPE from
+     * JBCefInputMethodAdapter when replacementRange is null (macOS + JCEF + CJK IME).
      */
     private fun installImeWorkaround() {
-        if (imeWorkaroundInstalled) return
+        if (holder.imeWorkaroundInstalled) return
 
         fun wrapListeners(component: java.awt.Component) {
             val listeners = component.inputMethodListeners
@@ -265,8 +294,6 @@ class ClaudeCodePanel(
                         try {
                             listener.inputMethodTextChanged(event)
                         } catch (e: NullPointerException) {
-                            // JBCefInputMethodAdapter.inputMethodTextChanged NPE 무시
-                            // replacementRange가 null일 때 발생하는 플랫폼 버그
                             logger.warn("Suppressed JCEF IME NPE (replacementRange is null)", e)
                         }
                     }
@@ -293,7 +320,7 @@ class ClaudeCodePanel(
 
         javax.swing.SwingUtilities.invokeLater {
             traverseAndWrap(browser.component)
-            imeWorkaroundInstalled = true
+            holder.imeWorkaroundInstalled = true
             logger.info("JCEF IME NPE workaround installed")
         }
     }
@@ -303,7 +330,7 @@ class ClaudeCodePanel(
      */
     private fun openDevTools() {
         try {
-            (browser as? JBCefBrowserBase)?.openDevtools()
+            (browser as? com.intellij.ui.jcef.JBCefBrowserBase)?.openDevtools()
                 ?: logger.warn("Failed to open DevTools: browser is not JBCefBrowserBase")
         } catch (e: Exception) {
             logger.error("Failed to open DevTools", e)
@@ -333,6 +360,7 @@ class ClaudeCodePanel(
             remove(loadingLabel)
             browser.loadURL(url)
             add(browser.component, BorderLayout.CENTER)
+            holder.isLoaded = true
             revalidate()
             repaint()
         }
@@ -442,7 +470,6 @@ class ClaudeCodePanel(
 
             override suspend fun rejectDiff(toolUseId: String?) {
                 logger.info("Diff rejected (toolUseId=$toolUseId)")
-                // Diff viewer close is handled by user manually; nothing to do here
             }
 
             override suspend fun createSession(workingDir: String) {
@@ -487,8 +514,6 @@ class ClaudeCodePanel(
             override suspend fun updatePlugin() {
                 ApplicationManager.getApplication().invokeLater {
                     try {
-                        // PluginManagerConfigurable is @ApiStatus.Internal — use reflection
-                        // to avoid Plugin Verifier flagging internal API usage.
                         val clazz = Class.forName("com.intellij.ide.plugins.PluginManagerConfigurable")
                         @Suppress("UNCHECKED_CAST")
                         val configurableClass = clazz as Class<out com.intellij.openapi.options.Configurable>
@@ -499,9 +524,7 @@ class ClaudeCodePanel(
                             try {
                                 val method = configurable.javaClass.getMethod("enableSearch", String::class.java)
                                 method.invoke(configurable, "Claude Code with GUI")
-                            } catch (_: Exception) {
-                                // enableSearch not available — settings dialog still opens correctly
-                            }
+                            } catch (_: Exception) {}
                         }
                         logger.info("Opened Plugins settings dialog for plugin update")
                     } catch (e: Exception) {
@@ -518,11 +541,6 @@ class ClaudeCodePanel(
 
     // ─── Project Helpers ─────────────────────────────────────────────
 
-    /**
-     * Find an open project by its base path.
-     * Used by RPC handlers to route actions to the correct project
-     * when the workingDir provided by the Node.js backend identifies a specific project.
-     */
     private fun findProjectByBasePath(basePath: String): Project? {
         if (basePath.isBlank()) return null
         return ProjectManager.getInstance().openProjects
@@ -531,13 +549,6 @@ class ClaudeCodePanel(
 
     // ─── Terminal Helpers ────────────────────────────────────────────
 
-    /**
-     * Create a terminal tab.
-     * - 253+ (2025.3): TerminalToolWindowTabsManager.createTabBuilder() (non-deprecated)
-     * - 242~252: TerminalToolWindowManager.createShellWidget() via reflection (deprecated but necessary)
-     *
-     * All calls go through reflection so Plugin Verifier won't flag deprecated API usage.
-     */
     private fun createTerminalTab(project: Project, workingDir: String): Any? {
         // Try new API first (253+): TerminalToolWindowTabsManager
         try {
@@ -547,24 +558,18 @@ class ClaudeCodePanel(
             val createTabBuilder = tabsManagerClass.getMethod("createTabBuilder")
             val builder = createTabBuilder.invoke(tabsManager)
 
-            // Set working directory if builder supports it
             try {
                 val setDir = builder.javaClass.getMethod("workingDirectory", String::class.java)
                 setDir.invoke(builder, workingDir)
-            } catch (_: Exception) {
-                // workingDirectory setter not available — proceed without it
-            }
+            } catch (_: Exception) {}
 
             val build = builder.javaClass.getMethod("build")
             val tab = build.invoke(builder)
-            // Extract TerminalView from the tab
             val getTerminalView = tab.javaClass.getMethod("getTerminalView")
             val terminalView = getTerminalView.invoke(tab)
             logger.info("Created terminal tab via TerminalToolWindowTabsManager (253+ API)")
             return terminalView
-        } catch (_: Exception) {
-            // New API not available — fall back to legacy
-        }
+        } catch (_: Exception) {}
 
         // Fall back to deprecated API via reflection (242~252)
         try {
@@ -584,22 +589,13 @@ class ClaudeCodePanel(
         }
     }
 
-    /**
-     * Send a command to a terminal widget.
-     * - 252+ (2025.2): sendCommandToExecute on TerminalWidget
-     * - 242~251: ShellTerminalWidget.executeCommand via reflection
-     */
     private fun sendCommandToTerminal(widget: Any, command: String) {
-        // Try sendCommandToExecute (252+)
         try {
             val method = widget.javaClass.getMethod("sendCommandToExecute", String::class.java)
             method.invoke(widget, command)
             return
-        } catch (_: Exception) {
-            // Not available — try legacy
-        }
+        } catch (_: Exception) {}
 
-        // Try createSendTextBuilder (253+)
         try {
             val builderMethod = widget.javaClass.getMethod("createSendTextBuilder", String::class.java)
             val builder = builderMethod.invoke(widget, command)
@@ -608,11 +604,8 @@ class ClaudeCodePanel(
             val send = builder.javaClass.getMethod("send")
             send.invoke(builder)
             return
-        } catch (_: Exception) {
-            // Not available — try legacy
-        }
+        } catch (_: Exception) {}
 
-        // Fall back to ShellTerminalWidget.executeCommand (242~251)
         try {
             val shellWidgetClass = Class.forName("org.jetbrains.plugins.terminal.ShellTerminalWidget")
             val toShellMethod = shellWidgetClass.getMethod(
@@ -630,10 +623,15 @@ class ClaudeCodePanel(
     // ─── Lifecycle ──────────────────────────────────────────────────
 
     override fun dispose() {
+        // Detach browser component from this panel WITHOUT disposing the browser.
+        // The browser is owned by ClaudeCodeBrowserService and survives tab move/split.
+        // It will be reattached when a new ClaudeCodePanel is created for the same session.
+        remove(browser.component)
+
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         backendService.releasePanel(project.basePath ?: "", panelId)
-        Disposer.dispose(cursorQuery)
-        Disposer.dispose(browser)
-        logger.info("ClaudeCodePanel disposed")
+        // NOTE: Do NOT call Disposer.dispose(cursorQuery) or Disposer.dispose(browser).
+        // They are managed by ClaudeCodeBrowserService and released in fileClosed().
+        logger.info("ClaudeCodePanel disposed (browser retained in pool)")
     }
 }

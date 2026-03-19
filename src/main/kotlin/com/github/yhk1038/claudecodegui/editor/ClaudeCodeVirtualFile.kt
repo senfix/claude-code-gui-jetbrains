@@ -16,6 +16,10 @@ class ClaudeCodeVirtualFile(
     @Volatile
     private var displayName: String = "Claude: ${sessionId.take(8)}"
 
+    // WebView가 현재 표시 중인 경로 (탭 이동 시 복원용)
+    @Volatile
+    var currentPath: String? = initialPath
+
     companion object {
         private const val MAX_DISPLAY_NAME_LENGTH = 20
         private val openSessions = Collections.synchronizedMap(
