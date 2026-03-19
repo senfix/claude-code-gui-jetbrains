@@ -1,108 +1,135 @@
-# Claude Code mit GUI
+# Claude Code with GUI
 
-Die gleiche Claude Code GUI, die Sie in Cursor und VS Code lieben, jetzt auch in JetBrains IDEs verfügbar.
-
-> Dieses Dokument ist eine deutsche Übersetzung der [englischen README](../README.md).
-
-🌐 [English](../README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [Español](README.es.md) | **Deutsch** | [Français](README.fr.md)
+Die Claude Code GUI, die in Cursor und VS Code beliebt ist, ist jetzt auch in JetBrains IDEs verfugbar.
 
 [![JetBrains Marketplace](https://img.shields.io/jetbrains/plugin/v/30313?label=Marketplace)](https://plugins.jetbrains.com/plugin/30313-claude-code-with-gui)
 [![Downloads](https://img.shields.io/jetbrains/plugin/d/30313?label=Downloads)](https://plugins.jetbrains.com/plugin/30313-claude-code-with-gui)
 ![JetBrains IDE](https://img.shields.io/badge/JetBrains%20IDE-2024.2%2B-000000?logo=jetbrains)
 ![Claude Code](https://img.shields.io/badge/Claude%20Code%20CLI-%3E%3D1.0.0-blueviolet)
 
----
-
-## Übersicht
-
-**Claude Code mit GUI** zielt darauf ab, das gleiche Maß an UI/UX wie das Claude Code Plugin in Cursor und VS Code in JetBrains IDEs zu bringen.
-
-> **Dieses Projekt ist kein Klon eines anderen Projekts.** Der gesamte Quellcode wurde eigenständig entworfen und von Grund auf vollständig selbst geschrieben.
->
-> **Dieses Plugin arbeitet als Wrapper, der die Claude Code CLI startet.** Dies ist derselbe Ansatz, der von der offiziellen Claude Code für VS Code Erweiterung verwendet wird.
->
-> Wir arbeiten derzeit intensiv an der Stabilisierung des Dienstes. Wenn Sie einen Fehler melden, lösen wir ihn in der Regel innerhalb von durchschnittlich 1 Tag. Ihr Feedback und Ihre Fehlerberichte sind sehr willkommen.
->
-> Dieses Projekt möchte gemeinsam mit einer globalen Entwickler-Community wachsen. Wir verwenden **Englisch als offizielle gemeinsame Sprache**, um die Zusammenarbeit mit möglichst vielen Entwicklern zu maximieren. Wir lehnen jeden Versuch ab, ein Ökosystem aufzubauen, das auf die Sprache eines bestimmten Landes ausgerichtet ist.
-
-- In JetBrains ist Claude Code nur als Terminal verfügbar. Ich bevorzuge jedoch eine IDE-native Erfahrung gegenüber dem Terminal.
-- Andere Claude Code GUI Plugins für JetBrains sind zu weit von der ursprünglichen Claude Code für VS Code UI/UX abgewichen.
-- Darüber hinaus ist das Ziel, die sich schnell weiterentwickelnde Claude Code Erfahrung (z. B. Agent Team, Remote Control) als GUI bereitzustellen — damit Entwickler ohne Terminal auf den neuesten Funktionen bleiben können.
-- **Was ist mit anderen Modellen als Claude Code?** Es wäre großartig, wenn Benutzer optional andere lokale oder Community-Modelle als optionale Einstellung einbinden könnten.
-- **Was ist mit Umgebungen jenseits von JetBrains?** Mit Remote Control im Hinterkopf ist der Client als browserfähige Anwendung gebaut. Ich glaube, dies ist der richtige Weg, um letztendlich die vollständige Claude Code Client-Erfahrung zu unterstützen.
+🌐 [English](../README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [中文](README.zh.md) | [Español](README.es.md) | **Deutsch** | [Français](README.fr.md)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/yhk1038/claude-code-gui-jetbrains/main/docs/img/screenshot-chat.png" alt="Chat-Schnittstelle" width="800" />
+  <img src="https://raw.githubusercontent.com/yhk1038/claude-code-gui-jetbrains/main/docs/img/screenshot-chat.png" alt="Chat interface" width="800" />
 </p>
+
+## Highlights
+
+- Bietet die **gleiche UI/UX** wie Claude Code in Cursor/VS Code fur JetBrains IDEs
+- Ein Wrapper, der die Claude Code CLI startet — derselbe Ansatz wie die offizielle VS Code-Erweiterung
+- **Gesamter Quellcode eigenstandig entworfen und von Grund auf selbst geschrieben** — kein Klon eines anderen Projekts
+- Dual-Umgebungs-Architektur fur **unabhangigen Betrieb im Browser/auf Mobilgeraten** ohne JetBrains IDE
+- Stellt die sich schnell weiterentwickelnde Claude Code-Erfahrung (Agent Team, Remote Control usw.) als GUI bereit
+
+> Wir arbeiten derzeit intensiv an der Stabilisierung des Dienstes. Wenn Sie einen Fehler melden, losen wir ihn in der Regel innerhalb eines Tages. Ihr Feedback ist sehr willkommen.
+>
+> Dieses Projekt mochte gemeinsam mit einer globalen Entwickler-Community wachsen. Um die Zusammenarbeit mit moglichst vielen Entwicklern zu ermoglichen, verwenden wir **Englisch als offizielle gemeinsame Sprache**.
 
 ## Funktionen
 
 ### Streaming-Chat
 
-- Echtzeit-Markdown-Rendering mit Syntax-Hervorhebung
-- Zeigt Claude's Denkprozess bei der Entfaltung an
+- Echtzeit-Markdown-Rendering und Syntaxhervorhebung (mit Formel-Rendering)
+- Zeigt Claude's Denkprozess (Thinking) in Echtzeit an
 
 ### Tool-Call-Karten
 
-- Visuelle Karten für Dateizugriffe/Schreibvorgänge, Bash-Befehle und Suchergebnisse
-- Konsistente Präsentation, die der Cursor- und VS Code-Erfahrung entspricht
-
-### Diff-Überprüfung
-
-- Inline-Diff-Karten, die genau zeigen, welche Änderungen Claude vorschlägt
-- One-Click Apply / Reject Aktionen pro Änderung
+- Visuelle Karten fur Datei-Lese-/Schreibvorgange, Bash-Befehle und Suchergebnisse
+- Konsistente UI mit Cursor/VS Code
 
 ### Berechtigungsverwaltung
 
-- Native Dialoge für Datei- und Bash-Operationsberechtigungen
+- Native Dialoge fur Datei- und Bash-Operationsberechtigungen
 - Flexible Berechtigungsrichtlinienkonfiguration in den Einstellungen
 
 ### Mehrere Sitzungen
 
-- Verwalten Sie mehrere Gespräche gleichzeitig mit Registerkarten-Unterstützung
-- Sitzungs-Dropdown für schnelles Wechseln zwischen aktiven Sitzungen
-- Durchsuchen Sie den vollständigen Sitzungsverlauf
+- Verwalten mehrerer Gesprache gleichzeitig mit Tabs
+- Schnelles Wechseln uber das Sitzungs-Dropdown
+- Vollstandigen Sitzungsverlauf abrufen
 
-### Einstellungen
+### Datei- und Bildanhange
 
-- Konfigurieren Sie CLI-Pfad, Design, Schriftgröße, Berechtigungsrichtlinie und Protokollierungsstufe
+- Dateien und Bilder per Drag-and-Drop oder Auswahl an den Chat anhangen
+
+### Slash-Befehle
+
+- `/clear` — Sitzung zurucksetzen
+- `/compact` — Gesprach komprimieren
+- Weitere verfugbare Befehle werden dynamisch geladen
+
+### Unterbrechung
+
+- Nachrichten und Tool-Ausfuhrungen wahrend des Streamings sofort stoppen
+
+### Tunnel und Schlafverhinterung
+
+- **Unterstutzung fur Remote-Zugriff von aussen**
+  - Erstellt eine von aussen zugangliche URL und stellt einen QR-Code bereit
+  - Tunnelt den lokalen Server mit [cloudflared](https://github.com/cloudflare/cloudflared) von Cloudflare (kostenlos, unbegrenzt)
+  - Keine Kommunikation mit Dritten ausser dem Cloudflare-Proxy-Server, der Port-Forwarding bereitstellt
+  - Community-eigene Implementierung, unabhangig von Claude's Remote Control als nativem offiziellen Feature (kunftige Unterstutzung geplant)
+
+- **Schlafverhinderung**
+  - Verhindert den Ruhezustand unter macOS (caffeinate), Linux (systemd-inhibit) und Windows (powercfg)
+
+### Bidirektionale Einstellungssynchronisierung
+
+- Steuert nicht nur Plugin-Einstellungen, sondern auch die originalen Claude Code-Einstellungen (global/lokal) direkt uber das Einstellungsmenu
+- Geplante Verbesserung, um die gesamte offizielle Einstellungsdatei-Spezifikation uber die GUI zu steuern
+- Geplante Unterstutzung fur die Verwaltung von MCP-Servern, Skills, Agenten und anderen Bereichen unter `.claude` uber die GUI
+
+### Unabhangiger Browser-/Mobilbetrieb
+
+- Kann ohne JetBrains IDE eigenstandig im Browser oder auf Mobilgeraten verwendet werden
+- Das Node.js-Backend stellt einen WebSocket-Server bereit, und Browser verbinden sich als Clients
+- Kein reines Entwicklungstool, sondern ein unabhangiges Deployment-Ziel — bietet im Browser die gleichen Funktionen wie in der IDE
+
+### Zusatzliche Funktionen
+
+- **Open Claude in Terminal** — Startet Claude uber die Befehlspalette im IDE-Terminal
+- **Sitzungs-URL-Routing** — Sitzungen werden auch nach einem IDE-Neustart automatisch wiederhergestellt
+- **Single-Process Multi-Project** — Unterstutzt mehrere Projekte gleichzeitig mit einem Backend-Prozess
+- **Einstellungen** — CLI-Pfad, Theme, Schriftgroe, Berechtigungsrichtlinie und Log-Level konfigurieren
 
 <details>
 <summary>Weitere Screenshots</summary>
 
-| Willkommensbildschirm | Einstellungsbereich |
-|---|---|
-| <img src="https://raw.githubusercontent.com/yhk1038/claude-code-gui-jetbrains/main/docs/img/screenshot-welcome.png" alt="Willkommensbildschirm" width="400" /> | <img src="https://raw.githubusercontent.com/yhk1038/claude-code-gui-jetbrains/main/docs/img/screenshot-settings.png" alt="Einstellungsbereich" width="400" /> |
+**Willkommensbildschirm**
+
+<img src="https://raw.githubusercontent.com/yhk1038/claude-code-gui-jetbrains/main/docs/img/screenshot-welcome.png" alt="Welcome screen" width="400" />
+
+**Einstellungsbereich**
+
+<img src="https://raw.githubusercontent.com/yhk1038/claude-code-gui-jetbrains/main/docs/img/screenshot-settings.png" alt="Settings panel" width="400" />
 
 </details>
 
 ## Anforderungen
 
 - JetBrains IDE 2024.2 — 2025.3
-- Claude Code CLI >= 1.0.0, installiert und authentifiziert
+- Claude Code CLI >= 1.0.0 (installiert und authentifiziert)
 - Node.js >= 18
 
 ## Schnellstart
 
-1. Überprüfen Sie, ob `claude` CLI installiert und authentifiziert ist (`claude --version`).
+1. Uberprufen Sie, ob die `claude` CLI installiert und authentifiziert ist (`claude --version`).
 2. Installieren Sie das Plugin aus dem JetBrains Marketplace.
-3. Öffnen Sie das Panel über **Tools > Open Claude Code** oder drücken Sie `Ctrl+Shift+C`.
+3. Offnen Sie das Panel uber **Tools > Open Claude Code** oder drucken Sie `Ctrl+Shift+C`.
 4. Beginnen Sie mit Claude zu programmieren.
 
-| Aktion | Tastenkombination |
-|---|---|
-| Claude Code Panel öffnen | `Ctrl+Shift+C` |
-| Neue Sitzungs-Registerkarte | `Cmd+N` / `Ctrl+N` (Panel fokussiert) |
+**Tastenkombinationen**
 
----
-
-## Änderungsprotokoll
-
-Siehe [CHANGELOG.md](../CHANGELOG.md) für den vollständigen Versionsverlauf.
+- `Ctrl+Shift+C` — Claude Code Panel offnen
+- `Cmd+N` / `Ctrl+N` (Panel fokussiert) — Neuer Sitzungs-Tab
 
 ## Beitragen
 
-Beiträge sind willkommen. Bitte eröffnen Sie zunächst ein Issue, um größere Änderungen zu diskutieren.
+Beitrage jeder Art sind willkommen — Fehlermeldungen, Funktionsvorschlage, Code, Dokumentation, Ubersetzungen usw.
+
+- **Wo anfangen?** Lesen Sie [CONTRIBUTING.md](../CONTRIBUTING.md) fur Einrichtungsanleitungen und Richtlinien.
+- **Suchen Sie nach etwas zum Arbeiten?** Schauen Sie sich Issues mit dem Label [`good first issue`](https://github.com/yhk1038/claude-code-gui-jetbrains/labels/good%20first%20issue) an.
+- **Planen Sie eine groere Anderung?** Bitte [offnen Sie zuerst ein Issue](https://github.com/yhk1038/claude-code-gui-jetbrains/issues), um es zu diskutieren.
 
 ## Lizenz
 
