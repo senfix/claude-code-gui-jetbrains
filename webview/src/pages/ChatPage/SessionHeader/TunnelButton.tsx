@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ComputerDesktopIcon } from '@heroicons/react/24/outline';
 import { useTunnelStatus } from '@/hooks';
 import { TunnelModal } from '@/components/TunnelModal';
+import { getAdapter } from '@/adapters';
 
 export function TunnelButton() {
   const { tunnelEnabled } = useTunnelStatus();
@@ -10,7 +11,13 @@ export function TunnelButton() {
   return (
     <>
       <button
-        onClick={() => setModalOpen(true)}
+        onClick={(e) => {
+            if (e.metaKey) {
+                getAdapter().openUrl(window.location.href);
+            } else {
+                setModalOpen(true);
+            }
+        }}
         className="p-1 rounded transition-colors hover:bg-zinc-800"
         title="Remote Tunnel (Unofficial)"
       >
