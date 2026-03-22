@@ -1,13 +1,13 @@
-#!/usr/bin/env bash
+#!/bin/zsh
 # build.sh - 통합 빌드 스크립트
-# 사용법: ./scripts/build.sh <command>
+# 사용법: bash ./scripts/build.sh <command>
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 usage() {
   cat <<'HELP'
-Usage: ./scripts/build.sh <command>
+Usage: bash ./scripts/build.sh <command>
 
 Backend (backend/):
   be-install     pnpm install
@@ -56,11 +56,11 @@ case "${1:-}" in
   wv-test-watch)  pnpm -C "$ROOT/webview" test:watch ;;
 
   # --- Plugin (Gradle) ---
-  build)          bash "$ROOT/gradlew" -p "$ROOT" build ;;
-  run-ide)        CLAUDE_DEV_MODE=true bash "$ROOT/gradlew" -p "$ROOT" runIde ;;
-  build-plugin)   bash "$ROOT/gradlew" -p "$ROOT" buildPlugin ;;
-  clean)          bash "$ROOT/gradlew" -p "$ROOT" clean ;;
-  test)           bash "$ROOT/gradlew" -p "$ROOT" test ;;
+  build)          zsh "$ROOT/gradlew" -p "$ROOT" build ;;
+  run-ide)        CLAUDE_DEV_MODE=true zsh "$ROOT/gradlew" -p "$ROOT" runIde ;;
+  build-plugin)   zsh "$ROOT/gradlew" -p "$ROOT" buildPlugin ;;
+  clean)          zsh "$ROOT/gradlew" -p "$ROOT" clean ;;
+  test)           zsh "$ROOT/gradlew" -p "$ROOT" test ;;
 
   # --- Combined ---
   full-build)
@@ -69,7 +69,7 @@ case "${1:-}" in
     echo "=== WebView build ==="
     pnpm -C "$ROOT/webview" build
     echo "=== Plugin build ==="
-    bash "$ROOT/gradlew" -p "$ROOT" build
+    zsh "$ROOT/gradlew" -p "$ROOT" build
     ;;
   dist)
     echo "=== Backend build ==="
@@ -77,7 +77,7 @@ case "${1:-}" in
     echo "=== WebView build ==="
     pnpm -C "$ROOT/webview" build
     echo "=== Plugin buildPlugin ==="
-    bash "$ROOT/gradlew" -p "$ROOT" buildPlugin
+    zsh "$ROOT/gradlew" -p "$ROOT" buildPlugin
     ;;
   all)
     echo "=== Backend build ==="
@@ -85,12 +85,12 @@ case "${1:-}" in
     echo "=== WebView build ==="
     pnpm -C "$ROOT/webview" build
     echo "=== Plugin build ==="
-    bash "$ROOT/gradlew" -p "$ROOT" build
+    zsh "$ROOT/gradlew" -p "$ROOT" build
     echo "=== RunIde ==="
-    CLAUDE_DEV_MODE=true bash "$ROOT/gradlew" -p "$ROOT" runIde
+    CLAUDE_DEV_MODE=true zsh "$ROOT/gradlew" -p "$ROOT" runIde
     ;;
   clear-cache)
-    bash "$ROOT/clear-cache.sh"
+    zsh "$ROOT/clear-cache.sh"
     ;;
 
   # --- Help ---
