@@ -106,46 +106,13 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
-            <h3>0.12.6 - Slash command tooltips & stability fixes</h3>
+            <h3>0.13.0 - Session management & agent tool rendering</h3>
             <ul>
-                <li>Show slash command description as tooltip in command palette</li>
-                <li>Fixed ghost sessions appearing from CLI config loading</li>
-                <li>Fixed CLI config process not terminating properly on Windows</li>
-                <li>Fixed duplicate slash command entries in command palette</li>
-            </ul>
-            <h3>0.12.5 - Fix chat message area layout</h3>
-            <ul>
-                <li>Fixed chat message area layout with proper flex sizing</li>
-            </ul>
-            <h3>0.12.4 - Fix "idle" text in editor tab title</h3>
-            <ul>
-                <li>Fixed "idle" text appearing in editor tab title caused by Chromium normalizing tab characters in document.title</li>
-                <li>Replaced document.title-based streaming state with JBCefJSQuery bridge</li>
-            </ul>
-            <h3>0.12.3 - Unread badge on editor tab icon</h3>
-            <ul>
-                <li>Added unread badge to editor tab icon when streaming completes on a hidden tab</li>
-            </ul>
-            <h3>0.12.2 - UI polish and rendering fixes</h3>
-            <ul>
-                <li>Fixed message reset on reconnect that caused full re-render flicker</li>
-                <li>Fixed messages being hidden behind the fixed bottom panel</li>
-                <li>Fixed Enter key submitting instead of adding newline on mobile</li>
-                <li>Rendered fullscreen modals via React Portal for proper z-index layering</li>
-                <li>Applied max-height collapse to command-name user messages</li>
-                <li>Corrected page title from "Claude Code 2" to "Claude Code"</li>
-            </ul>
-            <h3>0.12.1 - Fix session reset when splitting or moving editor tabs to another tab group</h3>
-            <ul>
-                <li>Fixed WebView state loss when moving or splitting editor tabs</li>
-                <li>Added open current URL in external browser via Cmd+click (macOS) / Ctrl+click (Windows/Linux) on tunnel button</li>
-                <li>Fixed circular reference handling in LogForwarder console serialization</li>
-            </ul>
-            <h3>0.12.0 - @Mention File & Folder Autocomplete</h3>
-            <ul>
-                <li>Added @mention autocomplete in chat input for files and folders with fuzzy search</li>
-                <li>Added "Mention file from this project" action in command palette</li>
-                <li>Fixed command palette filter to search across all sections</li>
+                <li>Added session delete button to session dropdown with confirmation dialog</li>
+                <li>Added TaskOutput and TaskStop tool renderers for agent sub-task display</li>
+                <li>Added horizontal scroll for tool output content</li>
+                <li>Fixed browser back navigation triggered by trackpad horizontal swipe</li>
+                <li>Fixed potential Windows path error on language change</li>
             </ul>
         """.trimIndent()
     }

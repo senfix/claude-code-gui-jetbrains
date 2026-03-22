@@ -1,7 +1,7 @@
 {
   "name": "claude-code-backend",
   "private": true,
-  "version": "0.12.6",
+  "version": "0.13.0",
   "type": "module",
   "scripts": {
     "dev": "node --import tsx/esm --watch src/server.ts",
