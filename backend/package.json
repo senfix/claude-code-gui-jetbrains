@@ -1,12 +1,12 @@
 {
   "name": "claude-code-backend",
   "private": true,
-  "version": "0.12.5",
+  "version": "0.12.6",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "node esbuild.mjs",
-    "lint": "tsc --noEmit",
+    "lint": "node ./node_modules/typescript/lib/tsc.js --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
   },
