@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PanelItem, ToggleItem, PanelItemType, IconType } from '@/types/commandPalette';
+import { PanelItem, ToggleItem, CommandItem, PanelItemType, IconType } from '@/types/commandPalette';
 import { ToggleSwitch } from '@/components/ToggleSwitch';
 import { TerminalIcon, LinkIcon } from './icons/PaletteIcons';
 
@@ -38,7 +38,13 @@ export const PanelItemComponent = React.forwardRef<HTMLDivElement, {
       onClick={handleClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      title={item.disabled && isHovered ? 'Coming soon' : undefined}
+      title={
+        item.disabled && isHovered
+          ? 'Coming soon'
+          : item.type === PanelItemType.Command
+            ? (item as CommandItem).description
+            : undefined
+      }
       style={{
         height: 'var(--item-height, 28px)',
         paddingLeft: '8px',
