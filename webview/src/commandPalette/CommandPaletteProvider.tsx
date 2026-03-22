@@ -1,9 +1,10 @@
-import { createContext, useContext, useMemo, useRef, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useMemo, useRef, ReactNode } from 'react';
 import { useChatStreamContext } from '@/contexts/ChatStreamContext';
 import { useSessionContext } from '@/contexts/SessionContext';
-import { useBridgeContext } from '@/contexts/BridgeContext';
+import { useCliConfig } from '@/contexts/CliConfigContext';
 import { getAdapter } from '@/adapters';
-import { PanelSection, PanelSectionId } from '@/types/commandPalette';
+import { PanelSection } from '@/types/commandPalette';
+import type { SlashCommandInfo } from '@/types/slashCommand';
 import { CommandPaletteServices } from './types';
 import { CommandPaletteRegistry } from './CommandPaletteRegistry';
 import { KeyboardRegistry } from './KeyboardRegistry';
@@ -45,9 +46,8 @@ interface CommandPaletteProviderProps {
 
 export function CommandPaletteProvider({ children }: CommandPaletteProviderProps) {
   const chatStream = useChatStreamContext();
-  const { systemInit } = chatStream;
   const session = useSessionContext();
-  const bridge = useBridgeContext();
+  const { controlResponse } = useCliConfig();
 
   // Services ref - always points to current React state
   const servicesRef = useRef<CommandPaletteServices>({
@@ -155,79 +155,25 @@ export function CommandPaletteProvider({ children }: CommandPaletteProviderProps
     return { registry: reg, keyboardRegistry: keyboardReg };
   }, []);
 
-  const [fsCommandNames, setFsCommandNames] = useState<string[]>([]);
-
-  const fetchSlashCommands = useCallback(() => {
-    if (!bridge.isConnected) return;
-
-    console.log('[CommandPaletteProvider] Sending GET_SLASH_COMMANDS, workingDir:', session.workingDirectory);
-    bridge.send('GET_SLASH_COMMANDS', { workingDir: session.workingDirectory ?? undefined })
-      .then((response: Record<string, unknown>) => {
-        console.log('[CommandPaletteProvider] GET_SLASH_COMMANDS response:', response);
-        const commands = response?.slashCommands;
-        if (Array.isArray(commands)) {
-          const names = commands.map((cmd: unknown) =>
-            typeof cmd === 'string' ? cmd : (cmd as any)?.name ?? ''
-          ).filter(Boolean);
-          setFsCommandNames(names);
-          console.log('[CommandPaletteProvider] Filesystem slash commands:', names);
-        }
-      })
-      .catch((err: unknown) => {
-        console.error('[CommandPaletteProvider] Failed to load slash commands:', err);
-      });
-  }, [bridge.isConnected, bridge.send, session.workingDirectory]);
-
-  // Fetch slash commands on connect and when workingDirectory changes
-  useEffect(() => {
-    fetchSlashCommands();
-  }, [fetchSlashCommands]);
-
-  // CLI built-in commands from system/init event
-  const cliBuiltinCommandNames = useMemo(() => {
-    const raw = (systemInit as any)?.slash_commands;
-    if (!Array.isArray(raw)) return [] as string[];
-    return (raw as unknown[]).map((item: unknown) =>
-      typeof item === 'string' ? item : (item as any)?.name ?? ''
-    ).filter(Boolean) as string[];
-  }, [systemInit]);
-
-  useEffect(() => {
-    if (cliBuiltinCommandNames.length > 0) {
-      console.log('[CommandPaletteProvider] CLI built-in slash commands:', cliBuiltinCommandNames);
-    }
-  }, [cliBuiltinCommandNames]);
-
-  // Merge: CLI built-in + filesystem custom (deduplicated)
-  const allDynamicCommandNames = useMemo(() => {
-    const merged = new Set([...cliBuiltinCommandNames, ...fsCommandNames]);
-    return Array.from(merged);
-  }, [cliBuiltinCommandNames, fsCommandNames]);
+  // Slash commands from CLI config (control_response)
+  const commands = useMemo((): SlashCommandInfo[] => {
+    return controlResponse?.response?.response?.commands ?? [];
+  }, [controlResponse]);
 
   const sections = useMemo(() => {
-    if (allDynamicCommandNames.length > 0) {
-      const localCommands = [
-        new ClearCommand(),
-      ];
+    if (commands.length > 0) {
+      const localCommands = [new ClearCommand()];
       const localLabels: Set<string> = new Set(localCommands.map(c => c.label));
-      const dynamicCommands = allDynamicCommandNames
-        .filter(name => !localLabels.has(name.startsWith('/') ? name : `/${name}`))
-        .map((name, i) => new CliPassthroughCommand(name, 100 + i));
-      const allCommands = [...localCommands, ...dynamicCommands]
+      const dynamicCommands = commands
+        .filter(cmd => !localLabels.has(cmd.name.startsWith('/') ? cmd.name : `/${cmd.name}`))
+        .map((cmd, i) => new CliPassthroughCommand(cmd, 100 + i));
+      const sortedCommands = [...localCommands, ...dynamicCommands]
         .sort((a, b) => a.label.localeCompare(b.label));
-      // Reassign order to preserve alphabetical sort (buildSections re-sorts by order)
-      allCommands.forEach((cmd, i) => { (cmd as { order: number }).order = i; });
-      registry.registerSection(new SlashCommandsSection(), allCommands);
+      sortedCommands.forEach((cmd, i) => { (cmd as { order: number }).order = i; });
+      registry.registerSection(new SlashCommandsSection(), sortedCommands);
     }
-    const built = registry.buildSections();
-    // Inject dynamic labels and handlers into sections
-    for (const section of built) {
-      if (section.id === PanelSectionId.SlashCommands) {
-        section.onHeaderClick = fetchSlashCommands;
-      }
-    }
-    return built;
-  }, [registry, allDynamicCommandNames, fetchSlashCommands]);
+    return registry.buildSections();
+  }, [registry, commands]);
 
   const contextValue = useMemo<CommandPaletteRegistryContextValue>(
     () => ({ registry, keyboardRegistry, sections }),

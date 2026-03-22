@@ -482,7 +482,8 @@ export function useChatStream(options: UseChatStreamOptions): UseChatStreamRetur
   // Reset all stream-related internal state (for clear conversation)
   const resetStreamState = useCallback(() => {
     setIsStopped(false);
-    setSystemInit(null);
+    // NOTE: systemInit is NOT reset here — it is process-level state,
+    // not session-level. system/init fires only once per CLI spawn.
     setContextWindowUsage(null);
     setIsStreaming(false);
     setStreamingMessageId(null);

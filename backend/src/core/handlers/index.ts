@@ -25,7 +25,6 @@ import { openTerminalHandler } from './openTerminal';
 import { getVersionHandler } from './getVersion';
 import { getAccountHandler } from './getAccount';
 import { reclaimSessionHandler } from './reclaimSession';
-import { getSlashCommandsHandler } from './getSlashCommands';
 import { loginHandler } from './login';
 import { openUrlHandler } from './openUrl';
 import { getAvailableTerminalsHandler } from './getAvailableTerminals';
@@ -43,6 +42,7 @@ import { getTunnelStatusHandler } from './getTunnelStatus';
 import { sleepGuardEnableHandler } from './sleepGuardEnable';
 import { sleepGuardDisableHandler } from './sleepGuardDisable';
 import { listProjectFilesHandler } from './listProjectFiles';
+import { getCliConfigHandler } from './getCliConfig';
 
 export async function handleMessage(
   connectionId: string,
@@ -125,9 +125,6 @@ export async function handleMessage(
     case 'RECLAIM_SESSION':
       await reclaimSessionHandler(connectionId, message, connections, bridge);
       break;
-    case 'GET_SLASH_COMMANDS':
-      await getSlashCommandsHandler(connectionId, message, connections, bridge);
-      break;
     case 'LOGIN':
       await loginHandler(connectionId, message, connections, bridge);
       break;
@@ -178,6 +175,9 @@ export async function handleMessage(
       break;
     case 'LIST_PROJECT_FILES':
       await listProjectFilesHandler(connectionId, message, connections, bridge);
+      break;
+    case 'GET_CLI_CONFIG':
+      await getCliConfigHandler(connectionId, message, connections, bridge);
       break;
     default:
       console.error('[node-backend]', `Unknown message type: ${message.type}`);

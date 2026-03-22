@@ -7,6 +7,7 @@ import { ChatStreamProvider, useChatStreamContext } from './ChatStreamContext';
 import { ThemeProvider } from './ThemeContext';
 import { SettingsProvider } from './SettingsContext';
 import { ClaudeSettingsProvider } from './ClaudeSettingsContext';
+import { CliConfigProvider } from './CliConfigContext';
 import { ChatInputFocusProvider } from './ChatInputFocusContext';
 import { WorkingDirProvider } from './WorkingDirContext';
 import { CommandPaletteProvider } from '../commandPalette/CommandPaletteProvider';
@@ -116,7 +117,7 @@ function SessionLoader({ children }: { children: ReactNode }) {
           return;
         }
 
-        console.log('[SessionLoader] Session loaded, injecting raw messages:', rawMessages.length);
+        console.log('[SessionLoader] Session loaded, injecting raw messages:', rawMessages);
         loadMessages(rawMessages);
       }
     });
@@ -144,8 +145,9 @@ function SessionLoader({ children }: { children: ReactNode }) {
  * 2. BrowserRouter - react-router path-based routing
  * 3. ApiProvider - ClaudeCodeApi initialization (depends on Bridge)
  * 4. WorkingDirProvider - Working directory management (depends on Bridge + Api)
- * 5. SettingsProvider - IDE settings (terminal, theme, etc.) (depends on Bridge)
- * 6. ClaudeSettingsProvider - Claude Code settings (~/.claude/settings.json) (depends on Bridge)
+ * 5. CliConfigProvider - CLI config (control_response) cache (depends on Bridge + WorkingDir)
+ * 6. SettingsProvider - IDE settings (terminal, theme, etc.) (depends on Bridge)
+ * 7. ClaudeSettingsProvider - Claude Code settings (~/.claude/settings.json) (depends on Bridge)
  * 7. SessionProvider - Session management (depends on Bridge + WorkingDir + Settings)
  * 8. ChatStreamProvider - Chat state + Streaming + Diffs + Tools (depends on Bridge + Session)
  * 9. CommandPaletteProvider - Slash command manager (depends on ChatStream + Session)
@@ -158,6 +160,7 @@ export function AppProviders({ children }: AppProvidersProps) {
       <BrowserRouter>
         <ApiProvider>
           <WorkingDirProvider>
+            <CliConfigProvider>
             <SettingsProvider>
               <ClaudeSettingsProvider>
                 <SessionProvider>
@@ -173,6 +176,7 @@ export function AppProviders({ children }: AppProvidersProps) {
                 </SessionProvider>
               </ClaudeSettingsProvider>
             </SettingsProvider>
+          </CliConfigProvider>
           </WorkingDirProvider>
         </ApiProvider>
       </BrowserRouter>

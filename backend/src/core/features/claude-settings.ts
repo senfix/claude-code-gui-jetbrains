@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync, watch } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { homedir } from 'os';
 
 const CLAUDE_SETTINGS_FILE = join(homedir(), '.claude', 'settings.json');
@@ -73,7 +73,7 @@ async function writeKeyToJsonFile(filePath: string, key: string, value: unknown)
   } else {
     current[key] = value;
   }
-  const dir = filePath.substring(0, filePath.lastIndexOf('/'));
+  const dir = dirname(filePath);
   await mkdir(dir, { recursive: true });
   await writeFile(filePath, JSON.stringify(current, null, 2) + '\n', 'utf-8');
 }
