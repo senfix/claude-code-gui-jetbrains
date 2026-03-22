@@ -50,7 +50,7 @@ case "${1:-}" in
   wv-install)     pnpm -C "$ROOT/webview" install ;;
   wv-build)       pnpm -C "$ROOT/webview" build ;;
   wv-lint)        pnpm -C "$ROOT/webview" lint ;;
-  wv-tsc)         pnpm -C "$ROOT/webview" exec tsc ;;
+  wv-tsc)         pnpm -C "$ROOT/webview" exec node ./node_modules/typescript/lib/tsc.js ;;
   wv-dev)         pnpm -C "$ROOT/webview" dev ;;
   wv-test)        pnpm -C "$ROOT/webview" test ;;
   wv-test-watch)  pnpm -C "$ROOT/webview" test:watch ;;
