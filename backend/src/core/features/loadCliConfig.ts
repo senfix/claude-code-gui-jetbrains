@@ -1,3 +1,4 @@
+import { execFileSync, type ChildProcess } from 'child_process';
 import { Claude } from '../claude';
 
 export interface SlashCommandInfo {
@@ -105,8 +106,27 @@ export async function loadCliConfig(workingDir: string): Promise<CliConfigContro
   }
 }
 
+function killProcess(proc: ChildProcess): void {
+  if (!proc.pid) return;
+  if (process.platform === 'win32') {
+    try {
+      execFileSync('taskkill', ['/F', '/T', '/PID', String(proc.pid)]);
+    } catch {
+      proc.kill();
+    }
+  } else {
+    proc.kill('SIGTERM');
+  }
+}
+
 function loadCliConfigInternal(workingDir: string): Promise<CliConfigControlResponse | null> {
   return new Promise((resolve) => {
+    let resolved = false;
+    const safeResolve = (value: CliConfigControlResponse | null): void => {
+      if (resolved) return;
+      resolved = true;
+      resolve(value);
+    };
     const args = [
       '-p',
       '--output-format', 'stream-json',
@@ -134,8 +154,8 @@ function loadCliConfigInternal(workingDir: string): Promise<CliConfigControlResp
       if (!config) return;
 
       console.error('[loadCliConfig] resolved from stdout');
-      proc.kill();
-      resolve(config);
+      killProcess(proc);
+      safeResolve(config);
     });
 
     // Send initialize control_request to trigger system/init + control_response
@@ -154,20 +174,20 @@ function loadCliConfigInternal(workingDir: string): Promise<CliConfigControlResp
 
     proc.on('error', (err) => {
       console.error('[loadCliConfig] spawn error:', err);
-      resolve(null);
+      safeResolve(null);
     });
 
     proc.on('close', (code) => {
       console.error('[loadCliConfig] process closed with code:', code, 'stdout length:', stdout.length);
       const config = parseCliConfigResponse(stdout);
       console.error('[loadCliConfig] close fallback:', config ? 'found' : 'null');
-      resolve(config);
+      safeResolve(config);
     });
 
     // Safety timeout — kill process but let close event handle resolve
     setTimeout(() => {
       console.error('[loadCliConfig] timeout — killing process');
-      proc.kill();
+      killProcess(proc);
     }, 15000);
   });
 }
