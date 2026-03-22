@@ -129,6 +129,7 @@ function loadCliConfigInternal(workingDir: string): Promise<CliConfigControlResp
     };
     const args = [
       '-p',
+      '--no-session-persistence',
       '--output-format', 'stream-json',
       '--input-format', 'stream-json',
       '--verbose',
