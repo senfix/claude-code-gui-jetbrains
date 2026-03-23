@@ -106,6 +106,15 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
+            <h3>0.13.2 - Editor tab & resource fixes</h3>
+            <ul>
+                <li>Fixed new editor tab not opening in JetBrains environment</li>
+                <li>Fixed missing favicon-unread.svg in fallback resource extraction</li>
+            </ul>
+            <h3>0.13.1 - Maintenance patch</h3>
+            <ul>
+                <li>Maintenance patch release</li>
+            </ul>
             <h3>0.13.0 - Session management & agent tool rendering</h3>
             <ul>
                 <li>Added session delete button to session dropdown with confirmation dialog</li>
