@@ -9,7 +9,6 @@ interface RawAccountData {
   subscriptionType?: string | null;  // "max", "pro", "team", "enterprise", "claude_api", or null
   orgId?: string | null;
   orgName?: string | null;
-  rateLimitTier?: string | null;
 }
 
 // Display-ready data for the UI

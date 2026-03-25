@@ -1,7 +1,6 @@
 import type { ConnectionManager } from '../../ws/connection-manager';
 import type { Bridge } from '../../bridge/bridge-interface';
 import type { IPCMessage } from '../types';
-import { getClaudeCredentials } from '../features/getClaudeCredentials';
 import { Claude } from '../claude';
 
 interface ClaudeAuthStatus {
@@ -23,48 +22,15 @@ async function runClaudeAuthStatus(): Promise<ClaudeAuthStatus | null> {
   }
 }
 
-interface ProfileInfo {
-  subscriptionType: string | null;
-  rateLimitTier: string | null;
-}
-
-async function fetchProfileInfo(accessToken: string): Promise<ProfileInfo> {
-  try {
-    const res = await fetch('https://api.anthropic.com/api/claude_cli_profile', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-    if (!res.ok) return { subscriptionType: null, rateLimitTier: null };
-    const data = await res.json() as { organization?: { organization_type?: string; rate_limit_tier?: string } };
-    const orgType = data.organization?.organization_type;
-    let subscriptionType: string | null = null;
-    switch (orgType) {
-      case 'claude_max': subscriptionType = 'max'; break;
-      case 'claude_pro': subscriptionType = 'pro'; break;
-      case 'claude_enterprise': subscriptionType = 'enterprise'; break;
-      case 'claude_team': subscriptionType = 'team'; break;
-      default: subscriptionType = null;
-    }
-    return { subscriptionType, rateLimitTier: data.organization?.rate_limit_tier ?? null };
-  } catch {
-    return { subscriptionType: null, rateLimitTier: null };
-  }
-}
-
 export async function getAccountHandler(
   connectionId: string,
   message: IPCMessage,
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  const [authStatus, credentials] = await Promise.all([
-    runClaudeAuthStatus(),
-    getClaudeCredentials(),
-  ]);
+  const authStatus = await runClaudeAuthStatus();
 
-  if (!authStatus && !credentials) {
+  if (!authStatus) {
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,
       status: 'error',
@@ -73,18 +39,9 @@ export async function getAccountHandler(
     return;
   }
 
-  // Try to get subscriptionType from API (non-fatal, Cursor does this too)
-  const profileInfo = credentials ? await fetchProfileInfo(credentials.accessToken) : null;
-
-  const account = {
-    ...authStatus,
-    subscriptionType: profileInfo?.subscriptionType ?? authStatus?.subscriptionType ?? null,
-    rateLimitTier: profileInfo?.rateLimitTier ?? null,
-  };
-
   connections.sendTo(connectionId, 'ACK', {
     requestId: message.requestId,
     status: 'ok',
-    account,
+    account: authStatus,
   });
 }
