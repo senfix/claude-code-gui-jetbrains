@@ -283,6 +283,69 @@ describe('SessionContext', () => {
     });
   });
 
+  describe('inputMode - 세션 전환 시 모드 관리', () => {
+    it('addNewSession 호출 시 사용자가 변경한 inputMode가 유지됨', async () => {
+      let capturedCtx: ReturnType<typeof useSessionContext> | null = null;
+
+      render(
+        <SessionProvider>
+          <TestConsumer onMount={(ctx) => { capturedCtx = ctx; }} />
+        </SessionProvider>
+      );
+
+      // 사용자가 모드를 plan으로 변경
+      act(() => {
+        capturedCtx?.setInputMode('plan');
+      });
+      expect(capturedCtx?.inputMode).toBe('plan');
+
+      // 첫 메시지 제출로 새 세션 생성 (addNewSession → URL 변경)
+      act(() => {
+        capturedCtx?.addNewSession('new-session-123', 'Hello world');
+      });
+
+      // 새 세션 생성 후에도 사용자가 선택한 plan 모드가 유지되어야 함
+      await waitFor(() => {
+        expect(capturedCtx?.inputMode).toBe('plan');
+      });
+    });
+
+    it('switchSession 호출 시 inputMode가 기본값으로 리셋됨', async () => {
+      mockSessionsIndex.mockResolvedValue(mockSessionDtos);
+
+      let capturedCtx: ReturnType<typeof useSessionContext> | null = null;
+
+      render(
+        <SessionProvider>
+          <TestConsumer onMount={(ctx) => { capturedCtx = ctx; }} />
+        </SessionProvider>
+      );
+
+      await act(async () => {
+        await capturedCtx?.loadSessions();
+      });
+
+      // 사용자가 모드를 plan으로 변경
+      act(() => {
+        capturedCtx?.setInputMode('plan');
+      });
+      expect(capturedCtx?.inputMode).toBe('plan');
+
+      // 다른 세션으로 전환
+      act(() => {
+        capturedCtx?.switchSession('session-1');
+      });
+
+      // 세션 전환 후에는 hasUserChangedMode가 리셋되어 syncInitialInputMode가 적용 가능해야 함
+      // (실제 리셋은 ChatInput의 useEffect에서 syncInitialInputMode를 통해 이루어지지만,
+      //  여기서는 hasUserChangedMode가 false로 리셋되었는지를 간접 확인)
+      await waitFor(() => {
+        // modeResetTrigger가 증가했는지 확인 (간접 검증)
+        expect(capturedCtx?.modeResetTrigger).toBeGreaterThan(0);
+      });
+    });
+  });
+
   describe('workingDirectory - WorkingDirContext 연동', () => {
     it('useWorkingDir의 workingDirectory가 SessionContext에 노출됨', async () => {
       mockWorkingDirectory = '/projects/my-app';

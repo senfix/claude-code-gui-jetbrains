@@ -78,6 +78,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const hasUserChangedMode = useRef(false);
   // 세션 전환 시 초기 모드 재동기화를 트리거하기 위한 카운터
   const [modeResetTrigger, setModeResetTrigger] = useState(0);
+  // addNewSession 시 URL 변경으로 인한 모드 리셋을 건너뛰기 위한 플래그
+  const skipNextModeReset = useRef(false);
 
   const setInputMode = useCallback((newMode: InputMode) => {
     hasUserChangedMode.current = true;
@@ -102,6 +104,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   // Reset input mode when session changes (URL-driven)
   useEffect(() => {
+    if (skipNextModeReset.current) {
+      skipNextModeReset.current = false;
+      return;
+    }
     hasUserChangedMode.current = false;
     setModeResetTrigger(c => c + 1);
   }, [currentSessionId]);
@@ -261,6 +267,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
     newlyCreatedSessionIds.current.add(sessionId);
     setSessions(prev => [newSession, ...prev]);
 
+    // addNewSession은 사용자가 모드를 선택한 직후 호출되므로
+    // URL 변경으로 인한 모드 리셋을 건너뜀
+    skipNextModeReset.current = true;
     // URL change is the SSOT — navigating IS the session creation
     navigateToSession(sessionId);
   }, [navigateToSession]);
