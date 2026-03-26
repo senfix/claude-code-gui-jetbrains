@@ -8,7 +8,8 @@
     "build": "node esbuild.mjs",
     "lint": "node ./node_modules/typescript/lib/tsc.js --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "ws": "^8.18.0"
@@ -16,6 +17,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/ws": "^8.5.13",
+    "@vitest/coverage-v8": "^4.1.1",
     "esbuild": "^0.24.0",
     "tsx": "^4.21.0",
     "typescript": "^5.3.3",

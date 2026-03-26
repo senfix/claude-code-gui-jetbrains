@@ -14,6 +14,8 @@ Backend (backend/):
   be-build       pnpm build
   be-lint        pnpm lint
   be-dev         pnpm dev
+  be-test        pnpm test
+  be-test-cov    pnpm test:coverage (coverage report)
 
 WebView (webview/):
   wv-install     pnpm install
@@ -32,6 +34,7 @@ Plugin (Gradle):
   build-plugin   gradlew buildPlugin
   clean          gradlew clean
   test           gradlew test
+  test-cov       gradlew koverHtmlReport (Kotlin coverage)
 
 Combined:
   full-build     be-build + wv-build + gradlew build
@@ -47,6 +50,8 @@ case "${1:-}" in
   be-build)       pnpm -C "$ROOT/backend" build ;;
   be-lint)        pnpm -C "$ROOT/backend" lint ;;
   be-dev)         pnpm -C "$ROOT/backend" dev ;;
+  be-test)        pnpm -C "$ROOT/backend" test ;;
+  be-test-cov)    pnpm -C "$ROOT/backend" test:coverage ;;
 
   # --- WebView ---
   wv-install)     pnpm -C "$ROOT/webview" install ;;
@@ -65,6 +70,7 @@ case "${1:-}" in
   build-plugin)   "$ROOT/gradlew" -p "$ROOT" buildPlugin ;;
   clean)          "$ROOT/gradlew" -p "$ROOT" clean ;;
   test)           "$ROOT/gradlew" -p "$ROOT" test ;;
+  test-cov)       "$ROOT/gradlew" -p "$ROOT" koverHtmlReport ;;
 
   # --- Combined ---
   full-build)

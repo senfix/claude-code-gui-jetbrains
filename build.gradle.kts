@@ -11,6 +11,7 @@ plugins {
     id("org.jetbrains.kotlin.jvm") version "2.1.0"
     id("org.jetbrains.intellij.platform") version "2.10.4"
     id("org.jetbrains.kotlin.plugin.serialization") version "2.1.0"
+    id("org.jetbrains.kotlinx.kover") version "0.9.1"
 }
 
 group = "com.github.yhk1038"
@@ -40,6 +41,15 @@ dependencies {
 
 kotlin {
     jvmToolchain(21)
+}
+
+kover {
+    reports {
+        total {
+            xml { onCheck = false }
+            html { onCheck = false }
+        }
+    }
 }
 
 intellijPlatform {

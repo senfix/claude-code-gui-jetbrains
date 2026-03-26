@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MessageBubble } from '../MessageBubble';
-import { LoadedMessageDto, MessageDto } from '../../../types';
-import { MessageRole, LoadedMessageType } from '../../../dto/common';
+import { LoadedMessageDto } from '../../../types';
+import { LoadedMessageType } from '../../../dto/common';
 
 // Mock child renderers to isolate MessageBubble dispatch logic
 vi.mock('../message-renderers', () => ({
@@ -18,10 +18,10 @@ vi.mock('../message-renderers', () => ({
   SystemMessageRenderer: ({ message }: { message: LoadedMessageDto }) => (
     <div data-testid="system-renderer">System: {message.uuid}</div>
   ),
-  SummaryMessageRenderer: ({ message }: { message: LoadedMessageDto }) => (
+  SummaryMessageRenderer: (_props: { message: LoadedMessageDto }) => (
     <div data-testid="summary-renderer">Summary</div>
   ),
-  NotificationMessageRenderer: ({ message }: { message: LoadedMessageDto }) => (
+  NotificationMessageRenderer: (_props: { message: LoadedMessageDto }) => (
     <div data-testid="notification-renderer">Notification</div>
   ),
 }));

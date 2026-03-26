@@ -6,7 +6,7 @@ import type { PendingDiff } from '../../../types';
 
 // Mock DiffViewer to avoid react-diff-view dependency
 vi.mock('../DiffViewer', () => ({
-  DiffViewer: ({ filePath, diffText }: { filePath: string; diffText: string }) => (
+  DiffViewer: ({ filePath }: { filePath: string; diffText: string }) => (
     <div data-testid="diff-viewer">Diff for {filePath}</div>
   ),
 }));

@@ -7,7 +7,6 @@ import {
   ToolResultBlockDto,
   ImageBlockDto,
   ThinkingBlockDto,
-  ContentBlockType,
 } from '../../dto/message/ContentBlockDto';
 
 describe('contentBlockTransformer', () => {
