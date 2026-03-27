@@ -297,7 +297,7 @@ describe('SessionContext', () => {
       act(() => {
         capturedCtx?.setInputMode('plan');
       });
-      expect(capturedCtx?.inputMode).toBe('plan');
+      expect(capturedCtx!.inputMode).toBe('plan');
 
       // 첫 메시지 제출로 새 세션 생성 (addNewSession → URL 변경)
       act(() => {
@@ -306,7 +306,7 @@ describe('SessionContext', () => {
 
       // 새 세션 생성 후에도 사용자가 선택한 plan 모드가 유지되어야 함
       await waitFor(() => {
-        expect(capturedCtx?.inputMode).toBe('plan');
+        expect(capturedCtx!.inputMode).toBe('plan');
       });
     });
 
@@ -329,7 +329,7 @@ describe('SessionContext', () => {
       act(() => {
         capturedCtx?.setInputMode('plan');
       });
-      expect(capturedCtx?.inputMode).toBe('plan');
+      expect(capturedCtx!.inputMode).toBe('plan');
 
       // 다른 세션으로 전환
       act(() => {

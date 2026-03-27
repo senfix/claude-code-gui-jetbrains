@@ -15,12 +15,21 @@ export async function getUsageHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  const accessToken = await getClaudeAccessToken();
-  if (!accessToken) {
+  const tokenResult = await getClaudeAccessToken();
+  if (!tokenResult) {
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,
       status: 'error',
-      error: 'Claude Code credentials not found. Please log in with Claude Code CLI first.',
+      error: 'No token configured. Set CLAUDE_CODE_OAUTH_TOKEN in Settings > General > Account.',
+    });
+    return;
+  }
+
+  if (tokenResult.type === 'apikey') {
+    connections.sendTo(connectionId, 'ACK', {
+      requestId: message.requestId,
+      status: 'error',
+      error: 'Usage tracking is only available with OAuth token (CLAUDE_CODE_OAUTH_TOKEN). API key does not support usage tracking.',
     });
     return;
   }
@@ -62,7 +71,7 @@ export async function getUsageHandler(
       const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${tokenResult.token}`,
           'anthropic-beta': 'oauth-2025-04-20',
         },
       });

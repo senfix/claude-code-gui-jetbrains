@@ -22,6 +22,7 @@ interface UseAccountDataReturn {
   data: AccountInfo | null;
   isLoading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 // jO1 equivalent - maps authMethod raw value to display string
@@ -78,5 +79,5 @@ export function useAccountData(): UseAccountDataReturn {
     }
   }, [isConnected, fetchAccount]);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, refetch: fetchAccount };
 }

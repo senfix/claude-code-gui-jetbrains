@@ -1,14 +1,20 @@
+import {ReactNode} from "react";
+
 interface SettingSectionProps {
-  title: string;
-  children: React.ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+  children: ReactNode;
 }
 
-export function SettingSection({ title, children }: SettingSectionProps) {
+export function SettingSection({ title, description, children }: SettingSectionProps) {
   return (
     <section className="mb-8">
-      <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-4">
+      <h2 className="text-[12px] font-semibold text-zinc-500 uppercase tracking-wider mb-4">
         {title}
       </h2>
+      {description && (typeof description === 'string' ? (
+        <p className="text-[11px] font-normal text-zinc-500 -mt-2 mb-3">{description}</p>
+      ) : description)}
       <div className="bg-zinc-900 rounded-lg border border-zinc-800 px-4">
         {children}
       </div>

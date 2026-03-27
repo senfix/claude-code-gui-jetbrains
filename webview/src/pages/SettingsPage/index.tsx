@@ -9,6 +9,7 @@ import { TunnelSettings } from './Tunnel';
 import { AboutSettings } from './About';
 import { UsageSettings } from './Usage';
 import { ReleasesSettings } from './Releases';
+import { AccountSettings } from './Account';
 
 /**
  * Settings 메인 컴포넌트 - 현재 라우트에 따라 적절한 설정 페이지 렌더링
@@ -30,6 +31,8 @@ export function SettingsPage() {
         return <AdvancedSettings />;
       case Route.SETTINGS_TUNNEL:
         return <TunnelSettings />;
+      case Route.SETTINGS_ACCOUNT:
+        return <AccountSettings />;
       case Route.SETTINGS_ABOUT:
         return <AboutSettings />;
       case Route.SETTINGS_USAGE:
