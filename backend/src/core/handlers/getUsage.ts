@@ -51,13 +51,16 @@ function execFileAsync(cmd: string, args: string[], opts: { timeout: number }): 
   });
 }
 
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 90_000;
 let cachedUsage: CcbUsageResponse | null = null;
 let cachedAt = 0;
+let inflightPromise: Promise<CcbUsageResponse> | null = null;
+let lastError: string | null = null;
 
 export function resetUsageCache(): void {
   cachedUsage = null;
   cachedAt = 0;
+  lastError = null;
 }
 
 async function runCcbUsage(): Promise<CcbUsageResponse> {
@@ -73,19 +76,41 @@ export async function getUsageHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  if (cachedUsage !== null && Date.now() - cachedAt < CACHE_TTL_MS) {
+  if (Date.now() - cachedAt < CACHE_TTL_MS && (cachedUsage !== null || lastError !== null)) {
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,
-      status: 'ok',
+      status: cachedUsage !== null ? 'ok' : 'error',
       usage: cachedUsage,
+      error: lastError,
     });
     return;
   }
 
   try {
-    const usage = await runCcbUsage();
-    cachedUsage = usage;
-    cachedAt = Date.now();
+    if (inflightPromise !== null) {
+      try {
+        await inflightPromise;
+      } catch {
+        // absorb inflight rejection; respond based on cachedUsage
+      }
+      connections.sendTo(connectionId, 'ACK', {
+        requestId: message.requestId,
+        status: cachedUsage !== null ? 'ok' : 'error',
+        usage: cachedUsage,
+        error: lastError,
+      });
+      return;
+    }
+
+    inflightPromise = (async () => {
+      const usage = await runCcbUsage();
+      cachedUsage = usage;
+      cachedAt = Date.now();
+      lastError = null;
+      return usage;
+    })();
+
+    const usage = await inflightPromise;
 
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,
@@ -93,10 +118,16 @@ export async function getUsageHandler(
       usage,
     });
   } catch (err) {
+    const errorMessage = extractErrorMessage(err instanceof Error ? err.message : String(err));
+    lastError = errorMessage;
+    cachedAt = Date.now();
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,
       status: 'error',
-      error: extractErrorMessage(err instanceof Error ? err.message : String(err)),
+      usage: cachedUsage,
+      error: errorMessage,
     });
+  } finally {
+    inflightPromise = null;
   }
 }
