@@ -1,23 +1,11 @@
 import { StaticItem } from '../../types';
-import { useClaudeSettings } from '@/contexts/ClaudeSettingsContext';
-import { useCliConfig } from '@/contexts/CliConfigContext';
-import {
-  getEffortDef,
-  getModelEffortConfig,
-  parseEffortLevel,
-} from '@/types/effort';
+import { useEffort } from '@/hooks/useEffort';
 
 export const EFFORT_CYCLE_EVENT = 'effort-cycle';
 
 const EffortDots = () => {
-  const { settings } = useClaudeSettings();
-  const { controlResponse } = useCliConfig();
-
-  const { supportsEffort, levels } = getModelEffortConfig(controlResponse, settings.model);
+  const { supportsEffort, def } = useEffort();
   if (!supportsEffort) return null;
-
-  const current = parseEffortLevel(settings.effortLevel, levels);
-  const def = getEffortDef(current, levels);
 
   return (
     <span className="text-zinc-400 flex items-center gap-1">
