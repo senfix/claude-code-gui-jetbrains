@@ -1,6 +1,7 @@
 import type { ConnectionManager } from '../ws/connection-manager';
 import { Claude } from './claude';
 import { diagnoseAuthError } from './features/auth-diagnosis';
+import { getStrippableAuthEnvKeys } from './features/claude-settings';
 
 // InputMode -> CLI --permission-mode flag mapping
 const INPUT_MODE_TO_CLI_FLAG: Record<string, string> = {
@@ -74,6 +75,17 @@ export async function ensureClaudeProcess(
 
   console.error('[node-backend]', `Command: ${Claude.command} ${args.join(' ')}`);
 
+  // Strip OAuth env inherited from parent (e.g. Claude Desktop spawning the IDE) so the
+  // CLI falls through to its keychain-based auth, which can refresh expired tokens.
+  // User-pinned keys in Claude settings are preserved by getStrippableAuthEnvKeys().
+  const stripKeys = await getStrippableAuthEnvKeys(workingDir);
+  if (stripKeys.length > 0) {
+    console.error('[node-backend]', `Stripping inherited auth env from CLI spawn: ${stripKeys.join(', ')}`);
+  }
+  const stripEnv: Record<string, undefined> = Object.fromEntries(
+    stripKeys.map((k) => [k, undefined]),
+  );
+
   const proc = Claude.spawn(args, {
     cwd: workingDir,
     stdio: ['pipe', 'pipe', 'pipe'],
@@ -81,6 +93,7 @@ export async function ensureClaudeProcess(
       TERM: 'dumb',
       CI: 'true',
       CLAUDECODE: undefined,
+      ...stripEnv,
     },
   });
 

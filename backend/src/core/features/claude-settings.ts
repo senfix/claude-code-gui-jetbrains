@@ -203,6 +203,39 @@ const API_KEY_PATTERNS = [
   /AUTH_TOKEN$/i,
 ];
 
+// OAuth/API credential env keys that the Claude CLI consults BEFORE the keychain.
+// If these are inherited from a parent process (e.g. Claude Desktop spawning Claude Code,
+// IDE-integrated terminals, or stale env in the user's shell), the CLI will use them as-is
+// and never trigger its keychain-based refresh_token flow — so once the inherited token
+// expires, every call returns 401 indefinitely.
+const STRIPPABLE_AUTH_ENV_KEYS = [
+  'ANTHROPIC_API_KEY',
+  'CLAUDE_CODE_OAUTH_TOKEN',
+  'CLAUDE_CODE_OAUTH_TOKEN_FILE_DESCRIPTOR',
+] as const;
+
+/**
+ * Decide which auth-related env keys should be stripped from the env passed to a spawned
+ * Claude CLI child, given the merged Claude settings (global + project).
+ *
+ * Rationale: when the backend Node process inherits OAuth creds from its parent
+ * (Claude Desktop, IDE, etc.), passing them through to the CLI bypasses the CLI's
+ * refresh flow and pins it to a stale token. We strip them so the CLI falls back to
+ * its keychain-based auth (which can refresh).
+ *
+ * Exception: if the user explicitly placed one of these keys in their Claude settings
+ * (`env`), that's an intentional override (e.g. dev/staging API key) and we preserve it.
+ */
+export async function getStrippableAuthEnvKeys(workingDir?: string): Promise<string[]> {
+  const { settings } = await readMergedClaudeSettings(workingDir);
+  const env = settings.env;
+  const explicit =
+    env && typeof env === 'object' && !Array.isArray(env)
+      ? new Set(Object.keys(env as Record<string, unknown>))
+      : new Set<string>();
+  return STRIPPABLE_AUTH_ENV_KEYS.filter((key) => !explicit.has(key));
+}
+
 /**
  * Read env from Claude settings and return API key names found.
  * Checks both ~/.claude/settings.json and settings.local.json.
