@@ -23,6 +23,10 @@ export class CliPassthroughCommand extends SlashCommand {
 
   async execute(): Promise<void> {
     const { chatStream } = this.getServices();
-    chatStream.sendMessage(this.label, InputModeValues.AUTO_EDIT);
+    const currentInput = chatStream.input.trim();
+    // Send full input (with args) when the user typed this command directly,
+    // otherwise send just the command name (e.g. clicked from palette).
+    const message = currentInput.startsWith(this.label) ? currentInput : this.label;
+    chatStream.sendMessage(message, InputModeValues.AUTO_EDIT);
   }
 }

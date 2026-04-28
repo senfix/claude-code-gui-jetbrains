@@ -123,39 +123,39 @@ export function useCommandPalette({ onChange, textareaRef }: UseCommandPaletteOp
 
   const handleSlashKeyDown = useCallback((
     e: KeyboardEvent<HTMLTextAreaElement>,
-    currentValue: string,
+    _currentValue: string,
   ): boolean => {
-    if (showSlashCommands) {
-      if (e.key === 'Enter' && !e.shiftKey) {
+    if (!showSlashCommands) return false;
+
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+      const hasItems = filteredSections.some(s => s.items.length > 0);
+      if (hasItems) {
         e.preventDefault();
         executeAndClear();
         return true;
       }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        moveSelection('up');
-        return true;
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        moveSelection('down');
-        return true;
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        closePanel();
-        return true;
-      }
+      // No matching command — close panel, let normal submit handle it
+      closePanel();
+      return false;
     }
-
-    if (e.key === 'Enter' && !e.shiftKey && currentValue.startsWith('/')) {
+    if (e.key === 'ArrowUp') {
       e.preventDefault();
-      executeAndClear();
+      moveSelection('up');
+      return true;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveSelection('down');
+      return true;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closePanel();
       return true;
     }
 
     return false;
-  }, [showSlashCommands, executeAndClear, closePanel, moveSelection]);
+  }, [showSlashCommands, filteredSections, executeAndClear, closePanel, moveSelection]);
 
   const detectSlashCommand = useCallback((newValue: string) => {
     if (newValue.startsWith('/')) {
