@@ -119,6 +119,15 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
+            <h3>0.13.5 - Native folder picker, auth diagnosis &amp; IME fix</h3>
+            <ul>
+                <li>Added native OS folder picker dialog to the Project Selector page</li>
+                <li>Added auth error diagnosis banner when env API keys may be expired</li>
+                <li>Strip inherited OAuth env vars when spawning CLI to prevent stale token 401 errors</li>
+                <li>Fallback to JSONL scanning when sessions-index.json is missing</li>
+                <li>Fixed IME composing interference with slash command palette on Enter key</li>
+                <li>Fixed slash commands with no matches not delegating to normal submit</li>
+            </ul>
             <h3>0.13.4 - Per-model effort levels &amp; auth stability</h3>
             <ul>
                 <li>Effort levels are now derived from the Claude CLI per model, so the available options match each model accurately</li>
