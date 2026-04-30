@@ -119,6 +119,14 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
+            <h3>0.13.6 - CLI credential delegation &amp; usage caching</h3>
+            <ul>
+                <li>Replaced direct API credential access with Claude Code CLI delegation for usage queries</li>
+                <li>Removed token input UI from Settings Account page (credentials now managed by CLI)</li>
+                <li>Added inflight deduplication and error backoff to usage API caching</li>
+                <li>Stripped CLI noise (npm warnings) from usage error messages shown in UI</li>
+                <li>Fixed Windows compatibility for CLI subprocess execution</li>
+            </ul>
             <h3>0.13.5 - Native folder picker, auth diagnosis &amp; IME fix</h3>
             <ul>
                 <li>Added native OS folder picker dialog to the Project Selector page</li>
