@@ -44,7 +44,7 @@ function extractErrorMessage(raw: string): string {
 
 function execFileAsync(cmd: string, args: string[], opts: { timeout: number }): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    execFile(cmd, args, opts, (err, stdout, stderr) => {
+    execFile(cmd, args, { ...opts, shell: true }, (err, stdout, stderr) => {
       if (err) return reject(err);
       resolve({ stdout: stdout?.toString() ?? '', stderr: stderr?.toString() ?? '' });
     });
