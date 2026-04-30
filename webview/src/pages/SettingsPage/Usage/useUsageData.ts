@@ -24,11 +24,12 @@ export function useUsageData(): UseUsageDataReturn {
     setError(null);
     try {
       const result = await send('GET_USAGE', {});
-      if (result.status === 'ok' && result.usage) {
+      if (result.usage) {
         setData(result.usage as UsageResponse);
         setLastUpdated(new Date());
         window.dispatchEvent(new CustomEvent('usage-data-updated', { detail: result.usage }));
-      } else {
+      }
+      if (result.status !== 'ok') {
         setError(result.error || 'Failed to fetch usage data');
       }
     } catch (err) {

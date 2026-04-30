@@ -1,13 +1,74 @@
+import { execFile } from 'child_process';
 import type { ConnectionManager } from '../../ws/connection-manager';
 import type { Bridge } from '../../bridge/bridge-interface';
 import type { IPCMessage } from '../types';
-import { getClaudeAccessToken } from '../features/getClaudeCredentials';
 
-const CACHE_TTL_MS = 60_000;
-let cachedUsage: unknown = null;
+interface UsageBucket {
+  utilization: number;
+  resets_at: string;
+}
+
+interface ExtraUsage {
+  is_enabled: boolean;
+  monthly_limit: number | null;
+  used_credits: number | null;
+  utilization: number | null;
+}
+
+interface CcbUsageResponse {
+  five_hour: UsageBucket | null;
+  seven_day: UsageBucket | null;
+  seven_day_oauth_apps: UsageBucket | null;
+  seven_day_sonnet: UsageBucket | null;
+  seven_day_opus: UsageBucket | null;
+  seven_day_cowork: UsageBucket | null;
+  iguana_necktie: UsageBucket | null;
+  extra_usage: ExtraUsage | null;
+}
+
+function extractErrorMessage(raw: string): string {
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (parsed.error?.message) return parsed.error.message;
+    } catch { /* not JSON, fall through */ }
+  }
+  const cleaned = raw
+    .split('\n')
+    .filter((line) => !/^npm (warn|WARN)\b/.test(line))
+    .join('\n')
+    .trim();
+  return cleaned || raw;
+}
+
+function execFileAsync(cmd: string, args: string[], opts: { timeout: number }): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, opts, (err, stdout, stderr) => {
+      if (err) return reject(err);
+      resolve({ stdout: stdout?.toString() ?? '', stderr: stderr?.toString() ?? '' });
+    });
+  });
+}
+
+const CACHE_TTL_MS = 90_000;
+let cachedUsage: CcbUsageResponse | null = null;
 let cachedAt = 0;
-let rateLimitedUntil: number = 0;
-let inflightPromise: Promise<unknown> | null = null;
+let inflightPromise: Promise<CcbUsageResponse> | null = null;
+let lastError: string | null = null;
+
+export function resetUsageCache(): void {
+  cachedUsage = null;
+  cachedAt = 0;
+  lastError = null;
+}
+
+async function runCcbUsage(): Promise<CcbUsageResponse> {
+  const { stdout } = await execFileAsync('npx', ['ccb', 'oauth', 'usage', '--json'], { timeout: 15000 });
+  const trimmed = stdout.trim();
+  if (!trimmed) throw new Error('Empty response from ccb');
+  return JSON.parse(trimmed);
+}
 
 export async function getUsageHandler(
   connectionId: string,
@@ -15,39 +76,12 @@ export async function getUsageHandler(
   connections: ConnectionManager,
   _bridge: Bridge,
 ): Promise<void> {
-  const tokenResult = await getClaudeAccessToken();
-  if (!tokenResult) {
-    connections.sendTo(connectionId, 'ACK', {
-      requestId: message.requestId,
-      status: 'error',
-      error: 'No token configured. Set CLAUDE_CODE_OAUTH_TOKEN in Settings > General > Account.',
-    });
-    return;
-  }
-
-  if (tokenResult.type === 'apikey') {
-    connections.sendTo(connectionId, 'ACK', {
-      requestId: message.requestId,
-      status: 'error',
-      error: 'Usage tracking is only available with OAuth token (CLAUDE_CODE_OAUTH_TOKEN). API key does not support usage tracking.',
-    });
-    return;
-  }
-
-  if (cachedUsage !== null && Date.now() - cachedAt < CACHE_TTL_MS) {
-    connections.sendTo(connectionId, 'ACK', {
-      requestId: message.requestId,
-      status: 'ok',
-      usage: cachedUsage,
-    });
-    return;
-  }
-
-  if (Date.now() < rateLimitedUntil) {
+  if (Date.now() - cachedAt < CACHE_TTL_MS && (cachedUsage !== null || lastError !== null)) {
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,
       status: cachedUsage !== null ? 'ok' : 'error',
-      ...(cachedUsage !== null ? { usage: cachedUsage } : { error: 'Rate limited. Please try again later.' }),
+      usage: cachedUsage,
+      error: lastError,
     });
     return;
   }
@@ -57,40 +91,22 @@ export async function getUsageHandler(
       try {
         await inflightPromise;
       } catch {
-        // inflight reject를 흡수하고 cachedUsage 기반으로 응답
+        // absorb inflight rejection; respond based on cachedUsage
       }
       connections.sendTo(connectionId, 'ACK', {
         requestId: message.requestId,
         status: cachedUsage !== null ? 'ok' : 'error',
-        ...(cachedUsage !== null ? { usage: cachedUsage } : { error: 'Usage fetch failed' }),
+        usage: cachedUsage,
+        error: lastError,
       });
       return;
     }
 
     inflightPromise = (async () => {
-      const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${tokenResult.token}`,
-          'anthropic-beta': 'oauth-2025-04-20',
-        },
-      });
-
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After');
-        const parsed = retryAfter ? parseInt(retryAfter, 10) : NaN;
-        const retryAfterSec = !isNaN(parsed) ? parsed : 60;
-        rateLimitedUntil = Date.now() + retryAfterSec * 1000;
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
-      }
-
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
-      }
-
-      const usage = await response.json();
+      const usage = await runCcbUsage();
       cachedUsage = usage;
       cachedAt = Date.now();
+      lastError = null;
       return usage;
     })();
 
@@ -102,10 +118,14 @@ export async function getUsageHandler(
       usage,
     });
   } catch (err) {
+    const errorMessage = extractErrorMessage(err instanceof Error ? err.message : String(err));
+    lastError = errorMessage;
+    cachedAt = Date.now();
     connections.sendTo(connectionId, 'ACK', {
       requestId: message.requestId,
       status: 'error',
-      error: err instanceof Error ? err.message : String(err),
+      usage: cachedUsage,
+      error: errorMessage,
     });
   } finally {
     inflightPromise = null;

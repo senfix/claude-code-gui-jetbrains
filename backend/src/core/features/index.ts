@@ -1,7 +1,6 @@
 export * from './generateSessionId';
 export * from './getProjectSessionsPath';
 export * from './extractSessionInfo';
-export * from './getClaudeCredentials';
 export * from './settings';
 export * from './getSessionsList';
 export * from './loadSessionMessages';
