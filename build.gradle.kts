@@ -119,6 +119,10 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
+            <h3>0.13.9 - Russian language option</h3>
+            <ul>
+                <li>Added Russian (Русский) to the Claude response language selector in Settings (issue #35)</li>
+            </ul>
             <h3>0.13.8 - Preserve composer input on command palette actions</h3>
             <ul>
                 <li>Fixed composer input being cleared when opening the slash command palette or executing a palette item such as switching models (issue #32)</li>
