@@ -119,6 +119,13 @@ intellijPlatform {
             untilBuild = "261.*"
         }
         changeNotes = """
+            <h3>0.13.7 - Dynamic model list &amp; input-mode fixes</h3>
+            <ul>
+                <li>Model list is now derived from the Claude CLI control response so available models always match the CLI</li>
+                <li>Fixed input mode (plan/normal/etc.) not being preserved when submitting via Enter</li>
+                <li>Fixed input mode not propagating when launching a slash command from the command palette</li>
+                <li>Fixed slash command palette remaining visible after arguments are typed</li>
+            </ul>
             <h3>0.13.6 - CLI credential delegation &amp; usage caching</h3>
             <ul>
                 <li>Replaced direct API credential access with Claude Code CLI delegation for usage queries</li>
