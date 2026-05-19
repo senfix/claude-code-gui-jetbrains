@@ -111,10 +111,9 @@ export function useCommandPalette({ onChange, textareaRef }: UseCommandPaletteOp
 
   const executeAndClear = useCallback(() => {
     executeSelectedItem();
-    onChange('');
     setShowSlashCommands(false);
     resetSelection();
-  }, [executeSelectedItem, onChange, resetSelection]);
+  }, [executeSelectedItem, resetSelection]);
 
   const closePanel = useCallback(() => {
     setShowSlashCommands(false);
@@ -189,21 +188,19 @@ export function useCommandPalette({ onChange, textareaRef }: UseCommandPaletteOp
       (item as any).action?.();
     }
     if (item.keepOpen) return;
-    onChange('');
     setShowSlashCommands(false);
     resetSelection();
-  }, [onChange, resetSelection]);
+  }, [resetSelection]);
 
   const handleSlashButtonClick = useCallback(() => {
     if (!showSlashCommands) {
-      onChange('/');
       setShowSlashCommands(true);
       setFilterQuery('');
       setSelectedSectionIndex(0);
       setSelectedItemIndex(0);
       textareaRef.current?.focus();
     }
-  }, [showSlashCommands, onChange, textareaRef]);
+  }, [showSlashCommands, textareaRef]);
 
   return {
     // Panel state

@@ -129,8 +129,7 @@ export function ChatInput() {
   // 커맨드 팔레트 "Mention file..." 항목 연동
   useEffect(() => {
     const handleMentionFromPalette = () => {
-      // handlePanelItemExecute가 action 실행 후 onChange('')로 값을 비우므로,
-      // 그 이후에 @를 삽입하기 위해 다음 틱으로 지연
+      // Defer to the next tick so that the palette closes before we insert @
       setTimeout(() => {
         const textarea = textareaRef.current;
         if (!textarea) return;
